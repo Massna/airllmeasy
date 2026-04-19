@@ -1056,7 +1056,10 @@ class ChatTab(QWidget):
         Returns a list of dicts with 'tool' and 'result' for auto-continue logic.
         """
         tool_calls = WorkspaceManager.parse_tool_calls(response)
+        print(f"DEBUG: Parsed {len(tool_calls)} tool calls from response.")
         if not tool_calls:
+            if "<tool_call>" in response:
+                print("DEBUG: Found <tool_call> tag but parsing failed! Check JSON format.")
             return []
 
         # Build lookup table for extension handlers

@@ -251,56 +251,43 @@ class WorkspaceManager:
             return ""
 
         folders_str = "\n".join(f"  - {f}" for f in self._allowed_folders)
-        example_folder = str(self._allowed_folders[0])
+        example_path = Path(self._allowed_folders[0])
+        example_dir = str(example_path.parent if example_path.is_file() else example_path).replace("\\", "/")
+        example_file = str(example_path).replace("\\", "/")
 
         prompt = f"""
 
-SYSTEM CAPABILITIES & AUTONOMOUS PROGRAMMER PERSONA
+SYSTEM CAPABILITIES: AUTONOMOUS FILE SYSTEM ACCESS
 ======================================================================
-You are an expert autonomous software engineer and AI agent. You have 
-direct access to the user's local file system workspace. The user has 
-granted you read/write permission to the following allowed paths (folders and/or files):
+You are an expert autonomous software engineer. You have DIRECT access to 
+the user's local file system. 
+
+ALLOWED WORKSPACE PATHS:
 {folders_str}
 
-As an autonomous coding agent (similar to Claude Code), your goal is to 
-solve the user's programming tasks efficiently, accurately, and without 
-requiring constant supervision.
-
-You can perform file operations by including exactly formatted <tool_call> 
-JSON blocks in your response. Each block must contain valid JSON.
-
-AVAILABLE TOOLS:
+TOOLS FOR AUTONOMOUS OPERATION:
 """
-        prompt += '• create_file      — {"tool": "create_file", "path": "<full_absolute_path>", "content": "<entire_file_content>"}\n'
-        prompt += '• modify_file      — {"tool": "modify_file", "path": "<full_absolute_path>", "content": "<entire_new_file_content>"}\n'
-        prompt += '• delete_file      — {"tool": "delete_file", "path": "<full_absolute_path>"}\n'
-        prompt += '• move_file        — {"tool": "move_file", "src": "<full_absolute_path>", "dst": "<full_absolute_path>"}\n'
-        prompt += '• read_file        — {"tool": "read_file", "path": "<full_absolute_path>"}\n'
-        prompt += '• list_directory   — {"tool": "list_directory", "path": "<full_absolute_path>"}\n'
-        prompt += '• create_directory — {"tool": "create_directory", "path": "<full_absolute_path>"}\n'
+        prompt += '• create_file      — {"tool": "create_file", "path": "<abs_path>", "content": "<content>"}\n'
+        prompt += '• modify_file      — {"tool": "modify_file", "path": "<abs_path>", "content": "<full_new_content>"}\n'
+        prompt += '• delete_file      — {"tool": "delete_file", "path": "<abs_path>"}\n'
+        prompt += '• read_file        — {"tool": "read_file", "path": "<abs_path>"}\n'
+        prompt += '• list_directory   — {"tool": "list_directory", "path": "<abs_path>"}\n'
         prompt += """
-YOUR WORKFLOW:
-1. UNDERSTAND & EXPLORE: If the user asks for a change but you don't know the exact file contents, ALWAYS use `list_directory` and `read_file` first to gather context before writing code.
-2. PLAN: Think step-by-step about how you will solve the problem.
-3. EXECUTE: Use `create_file` or `modify_file` to implement the solution. 
-4. REPORT: Briefly explain what you did.
-
-CRITICAL RULES FOR TOOL CALLS:
-- ONLY operate inside the allowed folders listed above.
-- ALWAYS use FULL, ABSOLUTE paths (e.g., C:/Users/.../folder/file.py or /home/.../folder/file.py).
-- When using `modify_file`, you MUST provide the ENTIRE completely rewritten file content in the "content" field. Do not use placeholders or summaries. The existing file will be overwritten with exactly what you provide.
-- You can chain multiple <tool_call> blocks in a single response to perform multiple actions at once.
-- Output pure JSON inside the tags. Escape all quotes and newlines correctly!
+CRITICAL RULES:
+1. ALWAYS use <tool_call> tags and JSON blocks to perform actions. 
+2. DONT JUST TALK. If you say you are going to edit a file, you MUST include the <tool_call> block in that same response.
+3. ALWAYS use FULL ABSOLUTE PATHS.
+4. For modify_file, the "content" field must contain the ENTIRE file content.
 
 Example of exploring:
 <tool_call>
 """
-        prompt += '{"tool": "list_directory", "path": "' + example_folder + '"}\n'
+        prompt += '{"tool": "list_directory", "path": "' + example_dir + '"}\n'
         prompt += """</tool_call>
 
-Example of modifying code:
+Example of editing:
 <tool_call>
 """
-        prompt += '{"tool": "modify_file", "path": "' + example_folder + '/main.py", "content": "print(\'Hello world!\')\\n"}\n'
+        prompt += '{"tool": "modify_file", "path": "' + example_file + '", "content": "..."}\n'
         prompt += "</tool_call>\n"
         return prompt

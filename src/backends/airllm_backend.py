@@ -415,27 +415,21 @@ class AirLLMBackend:
         except Exception as e:
             return f"Generation error: {e}"
     
-    def chat(self, message: str, 
-             system_prompt: str = "You are a helpful assistant.",
-             max_new_tokens: int = 512,
-             stream_callback: Optional[Callable[[str], None]] = None,
-             conversation_history: Optional[list] = None) -> str:
-        """
-        Simplified chat interface with history support.
-        """
-        # Format as chat with history
-        full_prompt = f"### System:\n{system_prompt}\n\n"
+        # Format as chat with history (using a more standard Llama-3/Mistral like separator)
+        full_prompt = f"<|system|>\n{system_prompt}\n"
         
         if conversation_history:
             for msg in conversation_history:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
                 if role == "user":
-                    full_prompt += f"### User:\n{content}\n\n"
+                    full_prompt += f"<|user|>\n{content}\n"
                 elif role == "assistant":
-                    full_prompt += f"### Assistant:\n{content}\n\n"
+                    full_prompt += f"<|assistant|>\n{content}\n"
         
-        full_prompt += f"### User:\n{message}\n\n### Assistant:\n"
+        full_prompt += f"<|user|>\n{message}\n<|assistant|>\n"
+        
+        print(f"--- AIRLLM PROMPT ---\n{full_prompt}\n---------------------")
 
         return self.generate(
             full_prompt, 
