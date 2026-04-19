@@ -325,6 +325,12 @@ class SettingsTab(QWidget):
             err = requirements.get("airllm_import_error")
             if err:
                 status_parts.append(f"   Erro: {err}")
+                el = err.lower()
+                if "optimum" in el and "bettertransformer" in el:
+                    status_parts.append(
+                        "   → O optimum 2.x removeu esse módulo. No terminal: "
+                        "pip install \"optimum>=1.17,<2\" \"transformers>=4.40,<4.49\""
+                    )
             else:
                 status_parts.append("   Dica: pip install airllm no mesmo Python do app, ou ajuste a pasta em “Pasta do AirLLM”.")
         

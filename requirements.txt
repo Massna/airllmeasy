@@ -1,5 +1,8 @@
 PySide6>=6.6.0
 airllm>=2.8.0
+# AirLLM importa optimum.bettertransformer, removido no optimum 2.x — manter 1.x e transformers < 4.49
+optimum>=1.17.0,<2.0.0
+transformers>=4.40.0,<4.49.0
 requests>=2.31.0
 httpx>=0.25.0
 pyinstaller>=6.0.0

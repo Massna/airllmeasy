@@ -170,6 +170,24 @@ A opção **Limpar** remove o caminho extra e volta a usar apenas o `sys.path` p
 
 Se ainda falhar, use **Verificar Requisitos do Sistema**: a mensagem mostra o **erro exato** do `import` (dependência faltando, DLL, etc.), não só “não instalado”.
 
+### Erro: `No module named 'optimum.bettertransformer'`
+
+Isso aparece quando o **optimum** instalado é a série **2.x**: o módulo `bettertransformer` foi removido, mas o **AirLLM** ainda depende dele. Não é falha do caminho nas configurações.
+
+No mesmo ambiente Python do app, instale versões compatíveis (como no `requirements.txt` do projeto):
+
+```bash
+pip install "optimum>=1.17,<2" "transformers>=4.40,<4.49"
+```
+
+Se já tiver versões novas demais, pode forçar:
+
+```bash
+pip install "optimum==1.17.0" "transformers==4.48.0"
+```
+
+Depois execute de novo **Verificar Requisitos do Sistema**.
+
 ## 🤝 Contribuição
 
 Contribuições são bem-vindas! Abra uma issue ou pull request.
