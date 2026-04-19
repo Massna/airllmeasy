@@ -192,6 +192,10 @@ class AirLLMBackend:
         """Retorna o nome do modelo carregado."""
         return self.model_name
     
+    # Constantes para sinalizar ao UI qual pacote está faltando
+    MISSING_AIRLLM = "AIRLLM_NOT_INSTALLED"
+    MISSING_LLAMACPP = "LLAMACPP_NOT_INSTALLED"
+
     def load_model(self, model_path: str, 
                    progress_callback: Optional[Callable[[str], None]] = None,
                    compression: str = "4bit",
@@ -204,6 +208,11 @@ class AirLLMBackend:
             progress_callback: Callback para status de carregamento
             compression: Tipo de compressão ("4bit", "8bit", ou "none")
             model_type: Tipo do modelo ("huggingface", "gguf", "ollama")
+
+        Raises:
+            ImportError: Com message contendo MISSING_AIRLLM ou MISSING_LLAMACPP
+                         quando o pacote não está instalado. O chamador (UI) deve
+                         capturar essa exceção e oferecer instalação automática.
         """
         with self._lock:
             if self._loading:
@@ -211,11 +220,39 @@ class AirLLMBackend:
             self._loading = True
         
         try:
+            # -- GGUF via llama-cpp-python ----------------------------------
+            if model_type == "gguf":
+                if progress_callback:
+                    progress_callback("Carregando modelo GGUF com llama-cpp-python...")
+                
+                try:
+                    from llama_cpp import Llama  # noqa: F811
+                except ImportError:
+                    raise ImportError(self.MISSING_LLAMACPP)
+
+                self.model = Llama(
+                    model_path=model_path,
+                    n_ctx=4096,
+                    n_threads=4,
+                    verbose=False,
+                )
+                self.model_name = model_path
+                self.model_path = model_path
+                self._model_type = "gguf"
+                    
+                if progress_callback:
+                    progress_callback("Modelo GGUF carregado com sucesso!")
+                return True
+
+            # -- AirLLM / HuggingFace --------------------------------------
             if progress_callback:
                 progress_callback("Importando AirLLM...")
 
             ensure_airllm_path()
-            from airllm import AutoModel
+            try:
+                from airllm import AutoModel  # noqa: F811
+            except ImportError:
+                raise ImportError(self.MISSING_AIRLLM)
             
             if progress_callback:
                 progress_callback(f"Carregando modelo: {model_path}")
@@ -226,47 +263,6 @@ class AirLLMBackend:
                 kwargs["compression"] = "4bit"
             elif compression == "8bit":
                 kwargs["compression"] = "8bit"
-            
-            # Para modelos GGUF (LMStudio), precisamos converter ou usar llama-cpp
-            if model_type == "gguf":
-                if progress_callback:
-                    progress_callback("Carregando modelo GGUF com llama-cpp-python...")
-                
-                try:
-                    from llama_cpp import Llama
-                    self.model = Llama(
-                        model_path=model_path,
-                        n_ctx=4096,
-                        n_threads=4,
-                        verbose=False
-                    )
-                    self.model_name = model_path
-                    self.model_path = model_path
-                    self._model_type = "gguf"
-                    
-                    if progress_callback:
-                        progress_callback("Modelo GGUF carregado com sucesso!")
-                    return True
-                except ImportError:
-                    if progress_callback:
-                        progress_callback("Instalando llama-cpp-python...")
-                    # Tenta instalar llama-cpp-python
-                    import subprocess
-                    subprocess.run(["pip", "install", "llama-cpp-python"], check=True)
-                    from llama_cpp import Llama
-                    self.model = Llama(
-                        model_path=model_path,
-                        n_ctx=4096,
-                        n_threads=4,
-                        verbose=False
-                    )
-                    self.model_name = model_path
-                    self.model_path = model_path
-                    self._model_type = "gguf"
-                    
-                    if progress_callback:
-                        progress_callback("Modelo GGUF carregado com sucesso!")
-                    return True
             
             # Para modelos Ollama, convertemos o nome para HuggingFace equivalente
             if model_type == "ollama":
@@ -315,10 +311,9 @@ class AirLLMBackend:
             
             return True
             
-        except ImportError as e:
-            if progress_callback:
-                progress_callback(f"Erro: AirLLM não instalado - {e}")
-            return False
+        except ImportError:
+            # Repassa ImportError com markers para o chamador (UI)
+            raise
         except Exception as e:
             if progress_callback:
                 progress_callback(f"Erro ao carregar modelo: {e}")

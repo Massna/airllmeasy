@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, Signal
 from ..utils.config import Config
 from ..utils.airllm_import import set_airllm_packages_path, resolve_airllm_site_packages
 from ..backends.airllm_backend import AirLLMBackend
+from .install_dialog import prompt_install_airllm
 
 
 class SettingsTab(QWidget):
@@ -118,9 +119,35 @@ class SettingsTab(QWidget):
         airllm_layout.addWidget(self.airllm_path_hint)
         
         # Status do sistema
+        req_row = QHBoxLayout()
         self.system_status_btn = QPushButton("🔍 Verificar Requisitos do Sistema")
         self.system_status_btn.clicked.connect(self._check_system_requirements)
-        airllm_layout.addWidget(self.system_status_btn)
+        req_row.addWidget(self.system_status_btn)
+
+        self.install_airllm_btn = QPushButton("⬇️ Instalar AirLLM")
+        self.install_airllm_btn.setToolTip(
+            "Baixa e instala o pacote AirLLM e dependências via pip"
+        )
+        self.install_airllm_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #a6e3a1;
+                color: #1e1e2e;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #94e2d5; }
+            QPushButton:disabled {
+                background-color: #45475a;
+                color: #6c7086;
+            }
+        """)
+        self.install_airllm_btn.setVisible(False)  # só aparece quando não está instalado
+        self.install_airllm_btn.clicked.connect(self._install_airllm_clicked)
+        req_row.addWidget(self.install_airllm_btn)
+
+        req_row.addStretch()
+        airllm_layout.addLayout(req_row)
         
         self.system_status_label = QLabel()
         self.system_status_label.setWordWrap(True)
@@ -312,6 +339,12 @@ class SettingsTab(QWidget):
                 "Se usou pip install -e, escolha o mesmo site-packages (o app lê arquivos .pth)."
             )
 
+    def _install_airllm_clicked(self):
+        """Abre diálogo de instalação do AirLLM com barra de progresso."""
+        if prompt_install_airllm(parent=self):
+            # Instalação bem-sucedida — re-verifica requisitos
+            self._check_system_requirements()
+
     def _check_system_requirements(self):
         """Verifica requisitos do sistema para AirLLM."""
         requirements = AirLLMBackend.check_requirements()
@@ -320,8 +353,10 @@ class SettingsTab(QWidget):
         
         if requirements["airllm_installed"]:
             status_parts.append("✅ AirLLM instalado")
+            self.install_airllm_btn.setVisible(False)
         else:
             status_parts.append("❌ Não foi possível importar o pacote airllm")
+            self.install_airllm_btn.setVisible(True)
             err = requirements.get("airllm_import_error")
             if err:
                 status_parts.append(f"   Erro: {err}")
@@ -332,7 +367,9 @@ class SettingsTab(QWidget):
                         "pip install \"optimum>=1.17,<2\" \"transformers>=4.40,<4.49\""
                     )
             else:
-                status_parts.append("   Dica: pip install airllm no mesmo Python do app, ou ajuste a pasta em “Pasta do AirLLM”.")
+                status_parts.append(
+                    '   Dica: clique em "⬇️ Instalar AirLLM" ou rode pip install airllm no terminal.'
+                )
         
         if requirements["torch_installed"]:
             status_parts.append("✅ PyTorch instalado")

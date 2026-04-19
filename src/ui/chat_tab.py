@@ -12,6 +12,7 @@ from ..utils.config import Config
 from ..backends.ollama_backend import OllamaBackend
 from ..backends.lmstudio_backend import LMStudioBackend
 from ..backends.airllm_backend import AirLLMBackend
+from .install_dialog import prompt_install_airllm, prompt_install_llama_cpp
 
 
 class ChatWorker(QThread):
@@ -61,6 +62,7 @@ class LoadModelWorker(QThread):
     """Worker thread para carregar modelo no AirLLM."""
     progress = Signal(str)
     finished = Signal(bool, str)
+    missing_package = Signal(str)  # emite AirLLMBackend.MISSING_AIRLLM ou MISSING_LLAMACPP
     
     def __init__(self, airllm: AirLLMBackend, model_path: str, compression: str, model_type: str = "huggingface"):
         super().__init__()
@@ -70,16 +72,21 @@ class LoadModelWorker(QThread):
         self.model_type = model_type
     
     def run(self):
-        success = self.airllm.load_model(
-            self.model_path,
-            progress_callback=lambda s: self.progress.emit(s),
-            compression=self.compression,
-            model_type=self.model_type
-        )
-        if success:
-            self.finished.emit(True, "Modelo carregado!")
-        else:
-            self.finished.emit(False, "Falha ao carregar modelo")
+        try:
+            success = self.airllm.load_model(
+                self.model_path,
+                progress_callback=lambda s: self.progress.emit(s),
+                compression=self.compression,
+                model_type=self.model_type
+            )
+            if success:
+                self.finished.emit(True, "Modelo carregado!")
+            else:
+                self.finished.emit(False, "Falha ao carregar modelo")
+        except ImportError as exc:
+            marker = str(exc)
+            self.missing_package.emit(marker)
+            self.finished.emit(False, f"Pacote não encontrado: {marker}")
 
 
 class ModelSelectorDialog(QDialog):
@@ -393,18 +400,51 @@ class ChatTab(QWidget):
                 QMessageBox.warning(self, "Aviso", "Nenhum modelo selecionado!")
                 return
             
-            self.load_model_btn.setEnabled(False)
-            self.status_label.setText(f"Carregando {model_path}...")
-            
-            self.load_worker = LoadModelWorker(
-                self.airllm,
-                model_path,
-                self.config.airllm_compression,
-                model_type
+            self._start_model_load(model_path, model_type)
+
+    def _start_model_load(self, model_path: str, model_type: str):
+        """Inicia o carregamento do modelo (pode ser chamado após instalação)."""
+        self.load_model_btn.setEnabled(False)
+        self.status_label.setText(f"Carregando {model_path}...")
+
+        # Guarda para possível retry após instalação
+        self._pending_model_path = model_path
+        self._pending_model_type = model_type
+        
+        self.load_worker = LoadModelWorker(
+            self.airllm,
+            model_path,
+            self.config.airllm_compression,
+            model_type
+        )
+        self.load_worker.progress.connect(lambda s: self.status_label.setText(s))
+        self.load_worker.missing_package.connect(self._on_missing_package)
+        self.load_worker.finished.connect(self._on_model_loaded)
+        self.load_worker.start()
+
+    def _on_missing_package(self, marker: str):
+        """Chamado quando um pacote necessário não está instalado.
+        
+        Mostra diálogo de instalação com barra de progresso e,
+        se o usuário instalar com sucesso, re-tenta carregar o modelo.
+        """
+        installed = False
+        if marker == AirLLMBackend.MISSING_AIRLLM:
+            installed = prompt_install_airllm(parent=self)
+        elif marker == AirLLMBackend.MISSING_LLAMACPP:
+            installed = prompt_install_llama_cpp(parent=self)
+        else:
+            QMessageBox.warning(
+                self, "Pacote Ausente",
+                f"Pacote necessário não encontrado: {marker}\n\n"
+                "Instale manualmente via pip e tente novamente."
             )
-            self.load_worker.progress.connect(lambda s: self.status_label.setText(s))
-            self.load_worker.finished.connect(self._on_model_loaded)
-            self.load_worker.start()
+            return
+
+        if installed:
+            # Re-tenta carregar o modelo após instalação bem-sucedida
+            self._add_system_message("✅ Pacote instalado! Tentando carregar o modelo novamente…")
+            self._start_model_load(self._pending_model_path, self._pending_model_type)
     
     def _on_model_loaded(self, success: bool, message: str):
         """Callback quando modelo AirLLM é carregado."""
