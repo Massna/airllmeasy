@@ -110,6 +110,16 @@ class ModelSelectorDialog(QDialog):
         self.model_list = QListWidget()
         self.model_list.itemDoubleClicked.connect(self.accept)
         layout.addWidget(self.model_list)
+
+        refresh_row = QHBoxLayout()
+        self.airllm_list_refresh_btn = QPushButton("🔄 Atualizar lista")
+        self.airllm_list_refresh_btn.setToolTip(
+            "Ollama: usa a API (serviço deve estar em execução). LM Studio: varre pastas de modelos."
+        )
+        self.airllm_list_refresh_btn.clicked.connect(self._load_models)
+        refresh_row.addWidget(self.airllm_list_refresh_btn)
+        refresh_row.addStretch()
+        layout.addLayout(refresh_row)
         
         # Ou digitar manualmente
         layout.addWidget(QLabel("Ou digite um modelo do HuggingFace:"))
@@ -192,7 +202,7 @@ class ChatTab(QWidget):
         # Backends
         self.ollama = OllamaBackend(config.ollama_url)
         self.lmstudio = LMStudioBackend(config.lmstudio_url)
-        self.airllm = AirLLMBackend()
+        self.airllm = AirLLMBackend(config)
         
         self.chat_worker = None
         self.load_worker = None

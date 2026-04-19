@@ -1,79 +1,180 @@
 """AirLLM Backend - Para execução de modelos grandes com pouca memória."""
+import json
 import os
 import threading
 import subprocess
 import platform
-from typing import Optional, Callable, Generator, List, Dict
+from typing import Optional, Callable, Generator, List, Dict, TYPE_CHECKING
 from pathlib import Path
 
+import requests
+
 from ..utils.airllm_import import ensure_airllm_path, try_import_airllm
+
+if TYPE_CHECKING:
+    from ..utils.config import Config
+
+
+def _append_lmstudio_roots_from_json(path: Path, roots: List[Path]) -> None:
+    """Lê caminhos de modelos no settings.json do LM Studio (pastas personalizadas)."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8", errors="ignore"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(data, dict):
+        return
+    for key in (
+        "modelDownloadFolder",
+        "modelsDirectory",
+        "downloadFolder",
+        "userModelDir",
+        "modelDownloadPath",
+        "modelsPath",
+    ):
+        v = data.get(key)
+        if isinstance(v, str) and v.strip():
+            p = Path(v.strip())
+            if p.is_dir():
+                roots.append(p)
 
 
 class AirLLMBackend:
     """Interface com AirLLM para executar modelos grandes com memória limitada."""
     
-    def __init__(self):
+    def __init__(self, config: Optional["Config"] = None):
         self.model = None
         self.tokenizer = None
         self.model_name = None
         self.model_path = None
         self._loading = False
         self._lock = threading.Lock()
+        self._config = config
         self._ollama_models_dir = self._get_ollama_models_dir()
-        self._lmstudio_models_dir = self._get_lmstudio_models_dir()
+    
+    def _ollama_api_base(self) -> str:
+        url = "http://localhost:11434"
+        if self._config is not None:
+            url = (self._config.ollama_url or url).strip()
+        return url.rstrip("/")
     
     def _get_ollama_models_dir(self) -> Path:
-        """Obtém o diretório de modelos do Ollama."""
-        if platform.system() == "Windows":
-            return Path(os.environ.get("USERPROFILE", "")) / ".ollama" / "models"
-        elif platform.system() == "Darwin":
-            return Path.home() / ".ollama" / "models"
-        else:
-            return Path.home() / ".ollama" / "models"
+        """Diretório raiz de modelos do Ollama (manifests, blobs)."""
+        env = os.environ.get("OLLAMA_MODELS", "").strip()
+        if env:
+            return Path(env)
+        return Path.home() / ".ollama" / "models"
     
-    def _get_lmstudio_models_dir(self) -> Path:
-        """Obtém o diretório de modelos do LMStudio."""
+    def _lmstudio_candidate_roots(self) -> List[Path]:
+        """Pastas onde o LM Studio costuma guardar GGUF (varia por versão)."""
+        roots: List[Path] = []
+        env = os.environ.get("LMSTUDIO_MODELS", "").strip()
+        if env:
+            roots.append(Path(env))
+        home = Path.home()
+        roots.extend([
+            home / ".cache" / "lm-studio" / "models",
+            home / ".lmstudio" / "models",
+        ])
         if platform.system() == "Windows":
-            return Path(os.environ.get("USERPROFILE", "")) / ".cache" / "lm-studio" / "models"
-        elif platform.system() == "Darwin":
-            return Path.home() / ".cache" / "lm-studio" / "models"
-        else:
-            return Path.home() / ".cache" / "lm-studio" / "models"
+            lad = os.environ.get("LOCALAPPDATA", "")
+            if lad:
+                roots.append(Path(lad) / "LM Studio" / "models")
+        for name in ("settings.json", "config.json", "preferences.json"):
+            p = home / ".lmstudio" / name
+            if p.is_file():
+                _append_lmstudio_roots_from_json(p, roots)
+                break
+        seen: set[str] = set()
+        unique: List[Path] = []
+        for r in roots:
+            try:
+                key = str(r.resolve())
+            except OSError:
+                continue
+            if key not in seen:
+                seen.add(key)
+                unique.append(r)
+        return unique
     
     def list_ollama_models(self) -> List[Dict]:
-        """Lista modelos baixados pelo Ollama que podem ser usados."""
-        models = []
-        manifests_dir = self._ollama_models_dir / "manifests" / "registry.ollama.ai" / "library"
+        """Lista modelos Ollama. Preferimos a API (fiável); disco em fallback."""
+        models: List[Dict] = []
+        base = self._ollama_api_base()
+        try:
+            r = requests.get(f"{base}/api/tags", timeout=8)
+            if r.status_code == 200:
+                for m in r.json().get("models", []):
+                    name = m.get("name") or m.get("model")
+                    if not name:
+                        continue
+                    models.append({
+                        "name": name,
+                        "source": "ollama",
+                        "path": name,
+                        "type": "ollama",
+                    })
+                if models:
+                    return models
+        except requests.exceptions.RequestException:
+            pass
         
+        manifests_dir = self._ollama_models_dir / "manifests" / "registry.ollama.ai" / "library"
         if manifests_dir.exists():
             for model_dir in manifests_dir.iterdir():
-                if model_dir.is_dir():
-                    for version in model_dir.iterdir():
-                        models.append({
-                            "name": f"{model_dir.name}:{version.name}",
-                            "source": "ollama",
-                            "path": str(model_dir),
-                            "type": "ollama"
-                        })
+                if not model_dir.is_dir():
+                    continue
+                for version in model_dir.iterdir():
+                    tag = version.name if version.is_dir() else version.stem
+                    name = f"{model_dir.name}:{tag}"
+                    models.append({
+                        "name": name,
+                        "source": "ollama",
+                        "path": name,
+                        "type": "ollama",
+                    })
         return models
     
     def list_lmstudio_models(self) -> List[Dict]:
-        """Lista modelos GGUF baixados pelo LMStudio."""
-        models = []
-        if self._lmstudio_models_dir.exists():
-            for org_dir in self._lmstudio_models_dir.iterdir():
-                if org_dir.is_dir():
-                    for model_dir in org_dir.iterdir():
-                        if model_dir.is_dir():
-                            gguf_files = list(model_dir.glob("*.gguf"))
-                            for gguf in gguf_files:
-                                models.append({
-                                    "name": f"{org_dir.name}/{model_dir.name}/{gguf.stem}",
-                                    "source": "lmstudio",
-                                    "path": str(gguf),
-                                    "type": "gguf",
-                                    "size": gguf.stat().st_size
-                                })
+        """Lista GGUFs em todas as pastas típicas do LM Studio."""
+        models: List[Dict] = []
+        seen: set[str] = set()
+        for root in self._lmstudio_candidate_roots():
+            if not root.is_dir():
+                continue
+            try:
+                for gguf in root.rglob("*.gguf"):
+                    if not gguf.is_file():
+                        continue
+                    try:
+                        key = str(gguf.resolve())
+                    except OSError:
+                        key = str(gguf)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    try:
+                        rel = gguf.relative_to(root)
+                        parts = rel.parts
+                        if len(parts) >= 2:
+                            name = "/".join(parts[:-1]) + "/" + gguf.stem
+                        else:
+                            name = gguf.stem
+                    except ValueError:
+                        name = gguf.stem
+                    try:
+                        size = gguf.stat().st_size
+                    except OSError:
+                        size = 0
+                    models.append({
+                        "name": name,
+                        "source": "lmstudio",
+                        "path": str(gguf),
+                        "type": "gguf",
+                        "size": size,
+                    })
+            except OSError:
+                continue
+        models.sort(key=lambda x: x["name"].lower())
         return models
     
     def list_all_local_models(self) -> List[Dict]:
@@ -175,18 +276,28 @@ class AirLLMBackend:
                 ollama_to_hf = {
                     "llama3.2:1b": "meta-llama/Llama-3.2-1B",
                     "llama3.2:3b": "meta-llama/Llama-3.2-3B",
+                    "llama3.2:latest": "meta-llama/Llama-3.2-3B",
                     "llama3.1:8b": "meta-llama/Llama-3.1-8B",
+                    "llama3.1:latest": "meta-llama/Llama-3.1-8B",
                     "llama2:7b": "meta-llama/Llama-2-7b-hf",
                     "llama2:13b": "meta-llama/Llama-2-13b-hf",
                     "mistral:7b": "mistralai/Mistral-7B-v0.1",
+                    "mistral:latest": "mistralai/Mistral-7B-v0.1",
                     "codellama:7b": "codellama/CodeLlama-7b-hf",
                     "phi3:mini": "microsoft/phi-3-mini-4k-instruct",
+                    "phi3:latest": "microsoft/phi-3-mini-4k-instruct",
                     "gemma2:2b": "google/gemma-2-2b",
+                    "gemma2:latest": "google/gemma-2-2b",
                     "qwen2.5:7b": "Qwen/Qwen2.5-7B",
+                    "qwen2.5:latest": "Qwen/Qwen2.5-7B",
                 }
-                # Remove tag de versão para buscar
-                base_model = model_path.split(":")[0] + ":" + model_path.split(":")[-1] if ":" in model_path else model_path
-                model_path = ollama_to_hf.get(base_model, model_path)
+                # Nome exato (ex.: llama3.2:latest) ou primeiro:último segmento
+                base_model = model_path
+                if ":" in model_path:
+                    parts = model_path.split(":")
+                    if len(parts) >= 2:
+                        base_model = f"{parts[0]}:{parts[-1]}"
+                model_path = ollama_to_hf.get(model_path, ollama_to_hf.get(base_model, model_path))
                 if progress_callback:
                     progress_callback(f"Usando modelo HuggingFace: {model_path}")
             
