@@ -18,9 +18,13 @@ class Config:
         "max_tokens": 512,
         "temperature": 0.7,
         "airllm_compression": "4bit",  # "4bit", "8bit", "none"
+        "airllm_context_size": 4096,   # Context length for GGUF (0 = model max)
         "airllm_packages_path": None,  # site-packages where the airllm package is installed (optional)
         "last_model": None,
         "window_geometry": None,
+        "workspace_folders": [],  # folders the AI can read/write
+        "system_prompt": "You are a helpful assistant.",
+        "file_ops_enabled": True,  # allow AI file operations
     }
     
     def __init__(self, config_path: Optional[str] = None):
@@ -133,6 +137,14 @@ class Config:
             self._config["airllm_compression"] = value
 
     @property
+    def airllm_context_size(self) -> int:
+        return self._config.get("airllm_context_size", 4096)
+        
+    @airllm_context_size.setter
+    def airllm_context_size(self, value: int) -> None:
+        self._config["airllm_context_size"] = max(0, value)
+
+    @property
     def airllm_packages_path(self) -> Optional[str]:
         """site-packages folder (or venv root) where pip installed the airllm package."""
         v = self._config.get("airllm_packages_path")
@@ -147,3 +159,28 @@ class Config:
             self._config["airllm_packages_path"] = None
         else:
             self._config["airllm_packages_path"] = str(value).strip()
+
+    @property
+    def workspace_folders(self) -> list:
+        """Folders the AI is allowed to read/write."""
+        return self._config.get("workspace_folders", [])
+
+    @workspace_folders.setter
+    def workspace_folders(self, value: list) -> None:
+        self._config["workspace_folders"] = value or []
+
+    @property
+    def system_prompt(self) -> str:
+        return self._config.get("system_prompt", "You are a helpful assistant.")
+
+    @system_prompt.setter
+    def system_prompt(self, value: str) -> None:
+        self._config["system_prompt"] = value
+
+    @property
+    def file_ops_enabled(self) -> bool:
+        return self._config.get("file_ops_enabled", True)
+
+    @file_ops_enabled.setter
+    def file_ops_enabled(self, value: bool) -> None:
+        self._config["file_ops_enabled"] = value

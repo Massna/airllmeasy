@@ -103,17 +103,26 @@ class OllamaBackend:
         except requests.exceptions.RequestException:
             return None
     
-    def chat(self, model_name: str, message: str, 
+    def chat(self, model_name: str, message: str,
+             system_prompt: str = "", max_tokens: int = 512, temperature: float = 0.7,
              stream_callback: Optional[Callable[[str], None]] = None) -> str:
         """Sends a message to the model via Ollama."""
         try:
+            payload = {
+                "model": model_name,
+                "prompt": message,
+                "stream": True,
+                "options": {
+                    "num_predict": max_tokens,
+                    "temperature": temperature
+                }
+            }
+            if system_prompt:
+                payload["system"] = system_prompt
+
             response = self.session.post(
                 f"{self.base_url}/api/generate",
-                json={
-                    "model": model_name,
-                    "prompt": message,
-                    "stream": True
-                },
+                json=payload,
                 stream=True,
                 timeout=None
             )

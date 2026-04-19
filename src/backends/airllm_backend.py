@@ -230,9 +230,10 @@ class AirLLMBackend:
                 except ImportError:
                     raise ImportError(self.MISSING_LLAMACPP)
 
+                ctx_size = self._config.airllm_context_size if self._config else 4096
                 self.model = Llama(
                     model_path=model_path,
-                    n_ctx=4096,
+                    n_ctx=ctx_size,
                     n_threads=4,
                     verbose=False,
                 )

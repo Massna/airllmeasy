@@ -1,14 +1,17 @@
-"""Chat tab with AI models."""
+"""Chat tab with AI models — premium design with file operations support."""
+import re
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTextEdit, QPlainTextEdit, QComboBox, QGroupBox, QSplitter,
     QFrame, QSpinBox, QDoubleSpinBox, QMessageBox, QRadioButton,
-    QButtonGroup, QListWidget, QListWidgetItem, QDialog, QDialogButtonBox
+    QButtonGroup, QListWidget, QListWidgetItem, QDialog, QDialogButtonBox,
+    QFileDialog, QCheckBox, QScrollArea, QSizePolicy
 )
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QFont, QTextCursor
+from PySide6.QtCore import Qt, QThread, Signal, QTimer
+from PySide6.QtGui import QFont, QTextCursor, QColor
 
 from ..utils.config import Config
+from ..utils.file_ops import WorkspaceManager
 from ..backends.ollama_backend import OllamaBackend
 from ..backends.lmstudio_backend import LMStudioBackend
 from ..backends.airllm_backend import AirLLMBackend
@@ -20,39 +23,46 @@ class ChatWorker(QThread):
     token_received = Signal(str)
     finished = Signal(str)
     error = Signal(str)
-    
-    def __init__(self, backend, model, message, max_tokens=256, temperature=0.7):
+
+    def __init__(self, backend, model, message, system_prompt="", max_tokens=256, temperature=0.7):
         super().__init__()
         self.backend = backend
         self.model = model
         self.message = message
+        self.system_prompt = system_prompt
         self.max_tokens = max_tokens
         self.temperature = temperature
-        self.backend_type = None
-    
+
     def run(self):
         try:
             if isinstance(self.backend, OllamaBackend):
                 response = self.backend.chat(
                     self.model,
                     self.message,
+                    system_prompt=self.system_prompt,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
                     stream_callback=lambda t: self.token_received.emit(t)
                 )
             elif isinstance(self.backend, LMStudioBackend):
                 response = self.backend.chat(
                     self.model,
                     self.message,
+                    system_prompt=self.system_prompt,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
                     stream_callback=lambda t: self.token_received.emit(t)
                 )
             elif isinstance(self.backend, AirLLMBackend):
                 response = self.backend.chat(
                     self.message,
+                    system_prompt=self.system_prompt,
                     max_new_tokens=self.max_tokens,
                     stream_callback=lambda t: self.token_received.emit(t)
                 )
             else:
                 response = "Backend not supported"
-            
+
             self.finished.emit(response)
         except Exception as e:
             self.error.emit(str(e))
@@ -62,15 +72,15 @@ class LoadModelWorker(QThread):
     """Worker thread for loading a model in AirLLM."""
     progress = Signal(str)
     finished = Signal(bool, str)
-    missing_package = Signal(str)  # emits AirLLMBackend.MISSING_AIRLLM or MISSING_LLAMACPP
-    
+    missing_package = Signal(str)
+
     def __init__(self, airllm: AirLLMBackend, model_path: str, compression: str, model_type: str = "huggingface"):
         super().__init__()
         self.airllm = airllm
         self.model_path = model_path
         self.compression = compression
         self.model_type = model_type
-    
+
     def run(self):
         try:
             success = self.airllm.load_model(
@@ -90,36 +100,44 @@ class LoadModelWorker(QThread):
 
 
 class ModelSelectorDialog(QDialog):
-    """Dialog for selecting a model for AirLLM."""
-    
+    """Dialog for selecting a model for AirLLM — redesigned."""
+
     def __init__(self, airllm: AirLLMBackend, parent=None):
         super().__init__(parent)
         self.airllm = airllm
         self.selected_model = None
         self.selected_type = None
-        
+
         self.setWindowTitle("Select Model for AirLLM")
-        self.setMinimumSize(500, 400)
+        self.setMinimumSize(550, 460)
         self._setup_ui()
         self._load_models()
-    
+
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        
-        # Instructions
-        info_label = QLabel(
-            "Select a model downloaded by Ollama or LMStudio to run with AirLLM:"
+        layout.setSpacing(14)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Header
+        header = QLabel("🚀 Select a model to run with AirLLM")
+        header.setStyleSheet("font-size: 16px; font-weight: bold; color: #89b4fa;")
+        layout.addWidget(header)
+
+        desc = QLabel(
+            "Choose a model downloaded by Ollama or LMStudio, or type a HuggingFace model ID."
         )
-        info_label.setWordWrap(True)
-        layout.addWidget(info_label)
-        
+        desc.setWordWrap(True)
+        desc.setStyleSheet("color: #6c7086; font-size: 12px; margin-bottom: 8px;")
+        layout.addWidget(desc)
+
         # Model list
         self.model_list = QListWidget()
         self.model_list.itemDoubleClicked.connect(self.accept)
         layout.addWidget(self.model_list)
 
         refresh_row = QHBoxLayout()
-        self.airllm_list_refresh_btn = QPushButton("🔄 Refresh list")
+        self.airllm_list_refresh_btn = QPushButton("🔄 Refresh")
+        self.airllm_list_refresh_btn.setObjectName("GhostBtn")
         self.airllm_list_refresh_btn.setToolTip(
             "Ollama: uses the API (service must be running). LM Studio: scans model folders."
         )
@@ -127,295 +145,521 @@ class ModelSelectorDialog(QDialog):
         refresh_row.addWidget(self.airllm_list_refresh_btn)
         refresh_row.addStretch()
         layout.addLayout(refresh_row)
-        
-        # Or type manually
-        layout.addWidget(QLabel("Or type a HuggingFace model:"))
+
+        # HuggingFace input
+        hf_label = QLabel("Or type a HuggingFace model:")
+        hf_label.setStyleSheet("color: #b4befe; font-weight: bold; font-size: 12px;")
+        layout.addWidget(hf_label)
+
         self.hf_input = QComboBox()
         self.hf_input.setEditable(True)
-        # Add popular models
         for model in AirLLMBackend.get_supported_models():
             self.hf_input.addItem(f"{model['name']} ({model['size']})", model['name'])
         layout.addWidget(self.hf_input)
-        
+
         # Buttons
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
-        )
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-    
+
     def _load_models(self):
         """Load the list of available models."""
         self.model_list.clear()
-        
-        # Ollama models
+
         ollama_models = self.airllm.list_ollama_models()
         if ollama_models:
-            header = QListWidgetItem("📦 Ollama Models:")
+            header = QListWidgetItem("📦  Ollama Models")
             header.setFlags(Qt.NoItemFlags)
+            header.setForeground(QColor("#89b4fa"))
             self.model_list.addItem(header)
-            
             for model in ollama_models:
-                item = QListWidgetItem(f"  🦙 {model['name']}")
+                item = QListWidgetItem(f"   🦙  {model['name']}")
                 item.setData(Qt.UserRole, model)
                 self.model_list.addItem(item)
-        
-        # LMStudio models (GGUF)
+
         lmstudio_models = self.airllm.list_lmstudio_models()
         if lmstudio_models:
-            header = QListWidgetItem("📦 LMStudio Models (GGUF):")
+            header = QListWidgetItem("📦  LMStudio Models (GGUF)")
             header.setFlags(Qt.NoItemFlags)
+            header.setForeground(QColor("#b4befe"))
             self.model_list.addItem(header)
-            
             for model in lmstudio_models:
-                size_mb = model.get('size', 0) / (1024*1024)
-                item = QListWidgetItem(f"  📄 {model['name']} ({size_mb:.0f} MB)")
+                size_mb = model.get('size', 0) / (1024 * 1024)
+                item = QListWidgetItem(f"   📄  {model['name']} ({size_mb:.0f} MB)")
                 item.setData(Qt.UserRole, model)
                 self.model_list.addItem(item)
-        
+
         if not ollama_models and not lmstudio_models:
-            item = QListWidgetItem("No local models found")
+            item = QListWidgetItem("   No local models found")
             item.setFlags(Qt.NoItemFlags)
+            item.setForeground(QColor("#6c7086"))
             self.model_list.addItem(item)
-    
+
     def get_selection(self):
-        """Returns the selected model and its type."""
-        # Check if selected from list
         current = self.model_list.currentItem()
         if current:
             model_data = current.data(Qt.UserRole)
             if model_data:
                 return model_data.get('path', model_data.get('name')), model_data.get('type', 'huggingface')
-        
-        # Check if typed manually
+
         hf_text = self.hf_input.currentText().strip()
         if hf_text:
-            # Remove size if present
             if " (" in hf_text:
                 hf_text = hf_text.split(" (")[0]
             return hf_text, "huggingface"
-        
+
         return None, None
 
 
+# ─────────────────────────── Workspace Panel ──────────────────────────────────
+
+class WorkspacePanel(QFrame):
+    """Panel for managing workspace folders for AI file operations."""
+
+    folders_changed = Signal()
+
+    def __init__(self, config: Config, workspace_mgr: WorkspaceManager, parent=None):
+        super().__init__(parent)
+        self.config = config
+        self.workspace_mgr = workspace_mgr
+        self.setObjectName("Card")
+        self._setup_ui()
+        self._load_folders()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setSpacing(10)
+
+        # Header row
+        header_row = QHBoxLayout()
+        icon_label = QLabel("📁")
+        icon_label.setStyleSheet("font-size: 18px;")
+        header_row.addWidget(icon_label)
+
+        title = QLabel("Workspace")
+        title.setStyleSheet("font-size: 13px; font-weight: bold; color: #b4befe;")
+        header_row.addWidget(title)
+        header_row.addStretch()
+
+        self.add_folder_btn = QPushButton("➕ Add Folder")
+        self.add_folder_btn.setObjectName("GhostBtn")
+        self.add_folder_btn.setFixedHeight(28)
+        self.add_folder_btn.setToolTip("Add workspace folder")
+        self.add_folder_btn.setStyleSheet("padding: 2px 10px;")
+        self.add_folder_btn.clicked.connect(self._add_folder)
+        header_row.addWidget(self.add_folder_btn)
+        layout.addLayout(header_row)
+
+        # Folder list
+        self.folder_list = QListWidget()
+        self.folder_list.setMaximumHeight(120)
+        self.folder_list.setStyleSheet("""
+            QListWidget {
+                font-size: 11px;
+                background-color: rgba(15,15,23,0.6);
+                border-radius: 8px;
+            }
+            QListWidget::item {
+                padding: 4px 8px;
+            }
+        """)
+        layout.addWidget(self.folder_list)
+
+        # File ops toggle
+        self.file_ops_check = QCheckBox("Enable AI file operations")
+        self.file_ops_check.setChecked(self.config.file_ops_enabled)
+        self.file_ops_check.setStyleSheet("font-size: 11px; color: #6c7086;")
+        self.file_ops_check.toggled.connect(self._on_file_ops_toggled)
+        layout.addWidget(self.file_ops_check)
+
+        # Remove button
+        btn_row = QHBoxLayout()
+        self.remove_btn = QPushButton("Remove")
+        self.remove_btn.setObjectName("DangerBtn")
+        self.remove_btn.setFixedHeight(26)
+        self.remove_btn.setFixedWidth(80)
+        self.remove_btn.setStyleSheet("font-size: 11px; padding: 4px 10px;")
+        self.remove_btn.clicked.connect(self._remove_folder)
+        btn_row.addWidget(self.remove_btn)
+        btn_row.addStretch()
+        layout.addLayout(btn_row)
+
+    def _load_folders(self):
+        self.folder_list.clear()
+        for folder in self.config.workspace_folders:
+            self.workspace_mgr.add_folder(folder)
+            # Show short name
+            parts = folder.replace("\\", "/").split("/")
+            short = "/".join(parts[-2:]) if len(parts) > 2 else folder
+            item = QListWidgetItem(f"📂 {short}")
+            item.setData(Qt.UserRole, folder)
+            item.setToolTip(folder)
+            self.folder_list.addItem(item)
+
+    def _add_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select workspace folder")
+        if folder:
+            if self.workspace_mgr.add_folder(folder):
+                folders = self.config.workspace_folders
+                if folder not in folders:
+                    folders.append(folder)
+                    self.config.workspace_folders = folders
+                    self.config.save()
+                self._load_folders()
+                self.folders_changed.emit()
+
+    def _remove_folder(self):
+        current = self.folder_list.currentItem()
+        if current:
+            folder = current.data(Qt.UserRole)
+            self.workspace_mgr.remove_folder(folder)
+            folders = self.config.workspace_folders
+            if folder in folders:
+                folders.remove(folder)
+                self.config.workspace_folders = folders
+                self.config.save()
+            self._load_folders()
+            self.folders_changed.emit()
+
+    def _on_file_ops_toggled(self, checked):
+        self.config.file_ops_enabled = checked
+        self.config.save()
+
+
+# ─────────────────────────────── Chat Tab ─────────────────────────────────────
+
 class ChatTab(QWidget):
-    """Chat tab with AI models."""
-    
+    """Chat tab with AI models — premium design with file operations."""
+
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
-        
+
         # Backends
         self.ollama = OllamaBackend(config.ollama_url)
         self.lmstudio = LMStudioBackend(config.lmstudio_url)
         self.airllm = AirLLMBackend(config)
-        
+
+        # Workspace manager for file operations
+        self.workspace_mgr = WorkspaceManager(config.workspace_folders)
+
         self.chat_worker = None
         self.load_worker = None
         self.conversation_history = []
-        
+
         self._setup_ui()
         self._refresh_models()
-    
+
     def _setup_ui(self):
         """Set up the chat tab interface."""
-        layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-        
-        # === Chat Settings ===
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # ── Left: Main chat area ──
+        chat_area = QWidget()
+        chat_layout = QVBoxLayout(chat_area)
+        chat_layout.setContentsMargins(0, 0, 0, 0)
+        chat_layout.setSpacing(10)
+
+        # === Backend selector row ===
         config_frame = QFrame()
+        config_frame.setObjectName("Card")
         config_layout = QHBoxLayout(config_frame)
-        config_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Execution backend selector
-        config_layout.addWidget(QLabel("Run with:"))
-        
+        config_layout.setContentsMargins(14, 10, 14, 10)
+        config_layout.setSpacing(12)
+
+        run_label = QLabel("Run with:")
+        run_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
+        config_layout.addWidget(run_label)
+
         self.exec_backend_group = QButtonGroup(self)
-        
-        self.ollama_radio = QRadioButton("🅰️ Ollama")
+
+        self.ollama_radio = QRadioButton("Ollama")
         self.ollama_radio.setChecked(True)
         self.exec_backend_group.addButton(self.ollama_radio)
         config_layout.addWidget(self.ollama_radio)
-        
-        self.lmstudio_radio = QRadioButton("🅱️ LMStudio")
+
+        self.lmstudio_radio = QRadioButton("LMStudio")
         self.exec_backend_group.addButton(self.lmstudio_radio)
         config_layout.addWidget(self.lmstudio_radio)
-        
-        self.airllm_radio = QRadioButton("🚀 AirLLM")
+
+        self.airllm_radio = QRadioButton("AirLLM")
         self.exec_backend_group.addButton(self.airllm_radio)
         config_layout.addWidget(self.airllm_radio)
-        
+
         self.exec_backend_group.buttonClicked.connect(self._on_exec_backend_changed)
-        
-        config_layout.addSpacing(20)
-        
+
+        # Divider
+        divider = QFrame()
+        divider.setFixedWidth(1)
+        divider.setFixedHeight(24)
+        divider.setStyleSheet("background-color: rgba(255,255,255,0.08);")
+        config_layout.addWidget(divider)
+
         # Model selector
-        config_layout.addWidget(QLabel("Model:"))
+        model_label = QLabel("Model:")
+        model_label.setStyleSheet("color: #6c7086; font-size: 12px;")
+        config_layout.addWidget(model_label)
+
         self.model_combo = QComboBox()
         self.model_combo.setMinimumWidth(200)
         config_layout.addWidget(self.model_combo)
-        
+
         self.refresh_models_btn = QPushButton("🔄")
-        self.refresh_models_btn.setMaximumWidth(40)
+        self.refresh_models_btn.setObjectName("GhostBtn")
+        self.refresh_models_btn.setFixedSize(40, 32)
         self.refresh_models_btn.clicked.connect(self._refresh_models)
         config_layout.addWidget(self.refresh_models_btn)
-        
+
         config_layout.addStretch()
-        
+
         # Load button (for AirLLM)
-        self.load_model_btn = QPushButton("📂 Load Model")
+        self.load_model_btn = QPushButton("📂 Load")
+        self.load_model_btn.setObjectName("SuccessBtn")
         self.load_model_btn.setVisible(False)
         self.load_model_btn.clicked.connect(self._load_airllm_model)
         config_layout.addWidget(self.load_model_btn)
-        
-        layout.addWidget(config_frame)
-        
-        # === Chat Area ===
-        chat_splitter = QSplitter(Qt.Vertical)
-        
-        # Conversation history
+
+        chat_layout.addWidget(config_frame)
+
+        # === Chat display ===
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
         self.chat_display.setMinimumHeight(300)
-        font = QFont("Consolas", 11)
-        self.chat_display.setFont(font)
-        chat_splitter.addWidget(self.chat_display)
-        
-        # Input area
+        chat_font = QFont("Consolas", 11)
+        self.chat_display.setFont(chat_font)
+        self.chat_display.setStyleSheet("""
+            QTextEdit {
+                background-color: rgba(12,12,20,0.8);
+                border: 1px solid rgba(255,255,255,0.04);
+                border-radius: 14px;
+                padding: 16px;
+            }
+        """)
+        chat_layout.addWidget(self.chat_display, stretch=1)
+
+        # === Input area ===
         input_frame = QFrame()
+        input_frame.setObjectName("Card")
         input_layout = QVBoxLayout(input_frame)
-        input_layout.setContentsMargins(0, 0, 0, 0)
-        
+        input_layout.setContentsMargins(14, 12, 14, 12)
+        input_layout.setSpacing(8)
+
         self.input_text = QPlainTextEdit()
-        self.input_text.setMaximumHeight(100)
-        self.input_text.setPlaceholderText("Type your message here...")
-        self.input_text.setFont(font)
+        self.input_text.setMaximumHeight(90)
+        self.input_text.setPlaceholderText("Type your message here… (Enter to send, Shift+Enter for new line)")
+        self.input_text.setFont(chat_font)
+        self.input_text.setStyleSheet("""
+            QPlainTextEdit {
+                background-color: rgba(15,15,23,0.6);
+                border: 1px solid rgba(255,255,255,0.06);
+                border-radius: 10px;
+                padding: 10px;
+            }
+            QPlainTextEdit:focus {
+                border-color: rgba(139,180,250,0.3);
+            }
+        """)
         input_layout.addWidget(self.input_text)
-        
-        # Action buttons
+
+        # Buttons row
         buttons_layout = QHBoxLayout()
-        
+        buttons_layout.setSpacing(8)
+
         # Parameters
-        buttons_layout.addWidget(QLabel("Tokens:"))
+        tokens_label = QLabel("Tokens:")
+        tokens_label.setStyleSheet("color: #6c7086; font-size: 11px;")
+        buttons_layout.addWidget(tokens_label)
+
+        spinbox_css = """
+            QSpinBox, QDoubleSpinBox {
+                background-color: rgba(15,15,23,0.8);
+                border: 1px solid rgba(255,255,255,0.06);
+                border-radius: 6px;
+                padding: 4px;
+                color: #e0e0ec;
+            }
+        """
+
         self.tokens_spin = QSpinBox()
         self.tokens_spin.setRange(1, 4096)
         self.tokens_spin.setValue(self.config.max_tokens)
-        self.tokens_spin.setMaximumWidth(80)
+        self.tokens_spin.setFixedWidth(85)
+        self.tokens_spin.setFixedHeight(30)
+        self.tokens_spin.setStyleSheet(spinbox_css)
         buttons_layout.addWidget(self.tokens_spin)
-        
-        buttons_layout.addWidget(QLabel("Temp:"))
+
+        temp_label = QLabel("Temp:")
+        temp_label.setStyleSheet("color: #6c7086; font-size: 11px;")
+        buttons_layout.addWidget(temp_label)
+
         self.temp_spin = QDoubleSpinBox()
         self.temp_spin.setRange(0.0, 2.0)
         self.temp_spin.setSingleStep(0.1)
         self.temp_spin.setValue(self.config.temperature)
-        self.temp_spin.setMaximumWidth(70)
+        self.temp_spin.setFixedWidth(75)
+        self.temp_spin.setFixedHeight(30)
+        self.temp_spin.setStyleSheet(spinbox_css)
         buttons_layout.addWidget(self.temp_spin)
-        
+
         buttons_layout.addStretch()
-        
-        self.clear_btn = QPushButton("🗑️ Clear")
+
+        self.clear_btn = QPushButton("🗑 Clear")
+        self.clear_btn.setObjectName("GhostBtn")
+        self.clear_btn.setFixedHeight(34)
         self.clear_btn.clicked.connect(self._clear_chat)
         buttons_layout.addWidget(self.clear_btn)
-        
-        self.send_btn = QPushButton("📤 Send")
+
+        self.send_btn = QPushButton("Send 🚀")
         self.send_btn.setMinimumWidth(100)
+        self.send_btn.setFixedHeight(36)
         self.send_btn.clicked.connect(self._send_message)
         buttons_layout.addWidget(self.send_btn)
-        
+
         input_layout.addLayout(buttons_layout)
-        
-        chat_splitter.addWidget(input_frame)
-        chat_splitter.setSizes([400, 150])
-        
-        layout.addWidget(chat_splitter)
-        
+
+        chat_layout.addWidget(input_frame)
+
         # Status
         self.status_label = QLabel()
-        layout.addWidget(self.status_label)
-        
+        self.status_label.setStyleSheet("font-size: 11px; padding: 4px 2px;")
+        chat_layout.addWidget(self.status_label)
+
+        layout.addWidget(chat_area, stretch=1)
+
+        # ── Right: Sidebar ──
+        right_sidebar = QWidget()
+        right_sidebar.setFixedWidth(240)
+        right_sidebar.setStyleSheet("""
+            QWidget {
+                background-color: rgba(12,12,20,0.5);
+                border-left: 1px solid rgba(255,255,255,0.04);
+            }
+        """)
+        right_layout = QVBoxLayout(right_sidebar)
+        right_layout.setContentsMargins(10, 10, 10, 10)
+        right_layout.setSpacing(10)
+
+        # Workspace panel
+        self.workspace_panel = WorkspacePanel(self.config, self.workspace_mgr, self)
+        right_layout.addWidget(self.workspace_panel)
+
+        # File ops log
+        log_frame = QFrame()
+        log_frame.setObjectName("Card")
+        log_layout = QVBoxLayout(log_frame)
+        log_layout.setContentsMargins(12, 10, 12, 10)
+        log_layout.setSpacing(6)
+
+        log_header = QLabel("📋 File Operations Log")
+        log_header.setStyleSheet("font-size: 12px; font-weight: bold; color: #a6e3a1;")
+        log_layout.addWidget(log_header)
+
+        self.file_ops_log = QListWidget()
+        self.file_ops_log.setStyleSheet("""
+            QListWidget {
+                font-size: 10px;
+                background-color: rgba(15,15,23,0.6);
+                border-radius: 8px;
+            }
+            QListWidget::item {
+                padding: 3px 6px;
+            }
+        """)
+        log_layout.addWidget(self.file_ops_log)
+
+        right_layout.addWidget(log_frame)
+
+        right_layout.addStretch()
+
+        layout.addWidget(right_sidebar)
+
         # Welcome message
-        self._add_system_message("Welcome to AI Local Manager! Select a model and start chatting.")
-    
+        self._add_system_message("Welcome to AirLLMEasy! Select a model and start chatting.")
+        if self.config.workspace_folders:
+            self._add_system_message(
+                f"📁 Workspace loaded with {len(self.config.workspace_folders)} folder(s). "
+                "AI can create, edit, and move files."
+            )
+
+    # ─────────────────────────── Backend switching ────────────────────────
+
     def _on_exec_backend_changed(self, button):
         """When the execution backend changes."""
         is_airllm = button == self.airllm_radio
         self.load_model_btn.setVisible(is_airllm)
         self.model_combo.setVisible(not is_airllm)
         self.refresh_models_btn.setVisible(not is_airllm)
-        
+
         if not is_airllm:
             self._refresh_models()
         else:
             self._update_airllm_status()
-    
+
     def _update_airllm_status(self):
         """Update AirLLM status."""
         if self.airllm.is_model_loaded():
             model_name = self.airllm.get_loaded_model_name()
             self.status_label.setText(f"✅ AirLLM: {model_name} loaded")
-            self.status_label.setStyleSheet("color: #a6e3a1;")
+            self.status_label.setStyleSheet("color: #a6e3a1; font-size: 11px;")
         else:
-            self.status_label.setText("ℹ️ AirLLM: No model loaded")
-            self.status_label.setStyleSheet("color: #fab387;")
-    
+            self.status_label.setText("ℹ️ AirLLM: No model loaded — click Load Model")
+            self.status_label.setStyleSheet("color: #fab387; font-size: 11px;")
+
     def _refresh_models(self):
         """Refresh the list of available models."""
         self.model_combo.clear()
-        
+
         if self.ollama_radio.isChecked():
             if self.ollama.is_running():
                 models = self.ollama.list_models()
                 for model in models:
                     self.model_combo.addItem(model.get("name", ""))
-                self.status_label.setText("✅ Connected to Ollama")
-                self.status_label.setStyleSheet("color: #a6e3a1;")
+                self.status_label.setText("🟢 Connected to Ollama")
+                self.status_label.setStyleSheet("color: #a6e3a1; font-size: 11px;")
             else:
-                self.status_label.setText("❌ Ollama is not running")
-                self.status_label.setStyleSheet("color: #f38ba8;")
-        
+                self.status_label.setText("🔴 Ollama is not running")
+                self.status_label.setStyleSheet("color: #f38ba8; font-size: 11px;")
+
         elif self.lmstudio_radio.isChecked():
             if self.lmstudio.is_running():
                 models = self.lmstudio.list_models()
                 for model in models:
                     self.model_combo.addItem(model.get("name", ""))
-                self.status_label.setText("✅ Connected to LMStudio")
-                self.status_label.setStyleSheet("color: #a6e3a1;")
+                self.status_label.setText("🟢 Connected to LMStudio")
+                self.status_label.setStyleSheet("color: #a6e3a1; font-size: 11px;")
             else:
-                self.status_label.setText("❌ LMStudio server is not running")
-                self.status_label.setStyleSheet("color: #f38ba8;")
-        
+                self.status_label.setText("🔴 LMStudio server is not running")
+                self.status_label.setStyleSheet("color: #f38ba8; font-size: 11px;")
+
         if self.model_combo.count() == 0 and not self.airllm_radio.isChecked():
             self.model_combo.addItem("No models available")
-    
+
+    # ─────────────────────────── AirLLM loading ──────────────────────────
+
     def _load_airllm_model(self):
         """Load a model in AirLLM."""
-        # Show model selection dialog
         dialog = ModelSelectorDialog(self.airllm, self)
-        
         if dialog.exec() == QDialog.Accepted:
             model_path, model_type = dialog.get_selection()
-            
             if not model_path:
                 QMessageBox.warning(self, "Warning", "No model selected!")
                 return
-            
             self._start_model_load(model_path, model_type)
 
     def _start_model_load(self, model_path: str, model_type: str):
-        """Start loading the model (can be called after installation)."""
         self.load_model_btn.setEnabled(False)
-        self.status_label.setText(f"Loading {model_path}...")
+        self.status_label.setText(f"⏳ Loading {model_path}...")
 
-        # Save for possible retry after installation
         self._pending_model_path = model_path
         self._pending_model_type = model_type
-        
+
         self.load_worker = LoadModelWorker(
-            self.airllm,
-            model_path,
-            self.config.airllm_compression,
-            model_type
+            self.airllm, model_path,
+            self.config.airllm_compression, model_type
         )
         self.load_worker.progress.connect(lambda s: self.status_label.setText(s))
         self.load_worker.missing_package.connect(self._on_missing_package)
@@ -423,11 +667,6 @@ class ChatTab(QWidget):
         self.load_worker.start()
 
     def _on_missing_package(self, marker: str):
-        """Called when a required package is not installed.
-        
-        Shows an installation dialog with progress bar and,
-        if the user installs successfully, retries loading the model.
-        """
         installed = False
         if marker == AirLLMBackend.MISSING_AIRLLM:
             installed = prompt_install_airllm(parent=self)
@@ -442,32 +681,36 @@ class ChatTab(QWidget):
             return
 
         if installed:
-            # Retry loading the model after successful installation
             self._add_system_message("✅ Package installed! Trying to load the model again…")
             self._start_model_load(self._pending_model_path, self._pending_model_type)
-    
+
     def _on_model_loaded(self, success: bool, message: str):
-        """Callback when AirLLM model is loaded."""
         self.load_model_btn.setEnabled(True)
-        
         if success:
             self.status_label.setText(f"✅ {message}")
-            self.status_label.setStyleSheet("color: #a6e3a1;")
+            self.status_label.setStyleSheet("color: #a6e3a1; font-size: 11px;")
             self._add_system_message(f"Model loaded: {self.airllm.get_loaded_model_name()}")
         else:
             self.status_label.setText(f"❌ {message}")
-            self.status_label.setStyleSheet("color: #f38ba8;")
-    
+            self.status_label.setStyleSheet("color: #f38ba8; font-size: 11px;")
+
+    # ─────────────────────────── Send Message ─────────────────────────────
+
     def _send_message(self):
         """Send a message to the model."""
         message = self.input_text.toPlainText().strip()
         if not message:
             return
-        
+
         if self.chat_worker and self.chat_worker.isRunning():
             QMessageBox.warning(self, "Warning", "Wait for the previous response!")
             return
-        
+
+        # Build system prompt with file ops context
+        system_prompt = self.config.system_prompt
+        if self.config.file_ops_enabled and self.workspace_mgr.allowed_folders:
+            system_prompt += self.workspace_mgr.build_system_prompt_fragment()
+
         # Determine backend
         if self.ollama_radio.isChecked():
             backend = self.ollama
@@ -487,71 +730,111 @@ class ChatTab(QWidget):
             if not self.airllm.is_model_loaded():
                 QMessageBox.warning(self, "Error", "Load a model first!")
                 return
-        
+
         # Add user message to chat
         self._add_user_message(message)
         self.input_text.clear()
-        
+
         # Prepare assistant response
         self._add_assistant_header()
-        
+
         # Start worker
         self.chat_worker = ChatWorker(
             backend, model, message,
+            system_prompt=system_prompt,
             max_tokens=self.tokens_spin.value(),
             temperature=self.temp_spin.value()
         )
         self.chat_worker.token_received.connect(self._on_token_received)
         self.chat_worker.finished.connect(self._on_chat_finished)
         self.chat_worker.error.connect(self._on_chat_error)
-        
+
         self.send_btn.setEnabled(False)
+        self.send_btn.setText("⏳ Thinking…")
         self.chat_worker.start()
-    
+
+    # ─────────────────────────── Chat Display ─────────────────────────────
+
     def _add_system_message(self, message: str):
-        """Add a system message."""
         self.chat_display.append(
-            f'<p style="color: #a6adc8; font-style: italic;">📋 {message}</p>'
+            f'<p style="color: #6c7086; font-style: italic; font-size: 12px; '
+            f'padding: 6px 10px; background-color: rgba(255,255,255,0.02); '
+            f'border-radius: 8px; margin: 4px 0;">📋 {message}</p>'
         )
-    
+
     def _add_user_message(self, message: str):
-        """Add a user message."""
+        escaped = message.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         self.chat_display.append(
-            f'<p style="color: #89b4fa;"><b>👤 You:</b></p>'
-            f'<p style="margin-left: 20px;">{message}</p>'
+            f'<div style="margin: 8px 0;">'
+            f'<p style="color: #89b4fa; font-weight: bold; font-size: 13px;">👤 You</p>'
+            f'<p style="margin-left: 24px; color: #e0e0ec; line-height: 1.5;">{escaped}</p>'
+            f'</div>'
         )
         self.conversation_history.append({"role": "user", "content": message})
-    
+
     def _add_assistant_header(self):
-        """Add assistant response header."""
         self.chat_display.append(
-            f'<p style="color: #a6e3a1;"><b>🤖 Assistant:</b></p>'
-            f'<p style="margin-left: 20px;">'
+            f'<div style="margin: 8px 0;">'
+            f'<p style="color: #a6e3a1; font-weight: bold; font-size: 13px;">🤖 Assistant</p>'
+            f'<p style="margin-left: 24px; color: #e0e0ec; line-height: 1.5;">'
         )
-    
+
     def _on_token_received(self, token: str):
-        """Callback for each received token (streaming)."""
         cursor = self.chat_display.textCursor()
         cursor.movePosition(QTextCursor.End)
         cursor.insertText(token)
         self.chat_display.setTextCursor(cursor)
         self.chat_display.ensureCursorVisible()
-    
+
     def _on_chat_finished(self, response: str):
-        """Callback when chat finishes."""
-        self.chat_display.append("</p><br>")
+        self.chat_display.append("</p></div><br>")
         self.send_btn.setEnabled(True)
+        self.send_btn.setText("Send 🚀")
         self.conversation_history.append({"role": "assistant", "content": response})
-    
+
+        # Process file operations from the response
+        if self.config.file_ops_enabled and self.workspace_mgr.allowed_folders:
+            self._process_file_operations(response)
+
     def _on_chat_error(self, error: str):
-        """Callback for chat error."""
         self.chat_display.append(
-            f'<p style="color: #f38ba8;">❌ Error: {error}</p>'
+            f'<p style="color: #f38ba8; padding: 6px 10px; '
+            f'background-color: rgba(243,139,168,0.08); border-radius: 8px;">'
+            f'❌ Error: {error}</p>'
         )
         self.send_btn.setEnabled(True)
-    
+        self.send_btn.setText("Send 🚀")
+
     def _clear_chat(self):
-        """Clear the chat history."""
         self.chat_display.clear()
         self.conversation_history.clear()
         self._add_system_message("Chat cleared. Start a new conversation!")
+
+    # ─────────────────────────── File Operations ──────────────────────────
+
+    def _process_file_operations(self, response: str):
+        """Parse and execute file operations from the AI response."""
+        tool_calls = WorkspaceManager.parse_tool_calls(response)
+        if not tool_calls:
+            return
+
+        for tc in tool_calls:
+            tool_name = tc.get("tool", "unknown")
+            result = self.workspace_mgr.execute_tool_call(tc)
+
+            # Log to the file ops panel
+            is_error = result.startswith("Error")
+            icon = "❌" if is_error else "✅"
+            color = QColor("#f38ba8") if is_error else QColor("#a6e3a1")
+
+            item = QListWidgetItem(f"{icon} {tool_name}: {result[:60]}")
+            item.setForeground(color)
+            item.setToolTip(result)
+            self.file_ops_log.addItem(item)
+            self.file_ops_log.scrollToBottom()
+
+            # Show in chat
+            if is_error:
+                self._add_system_message(f"❌ File op failed: {result}")
+            else:
+                self._add_system_message(f"✅ {result}")

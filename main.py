@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AI Local Manager - Application for managing and running AI models locally.
+AirLLMEasy - Application for managing and running AI models locally.
 
 Supported backends:
 - Ollama (Option A): Download and run models
@@ -35,7 +35,7 @@ def main():
     
     # Create application
     app = QApplication(sys.argv)
-    app.setApplicationName("AI Local Manager")
+    app.setApplicationName("AirLLMEasy")
     app.setOrganizationName("AILocalManager")
     app.setApplicationVersion("1.0.0")
     

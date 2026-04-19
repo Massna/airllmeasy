@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Build script for AI Local Manager — creates a standalone executable
+Build script for AirLLMEasy — creates a standalone executable
 using PyInstaller for Windows, Linux, or macOS.
 
 Usage:
@@ -36,7 +36,7 @@ def _output_name() -> str:
 def build(*, console: bool = False):
     """Build the executable for the current platform."""
     system = platform.system()
-    print(f"🔨 Building AI Local Manager for {system}...")
+    print(f"🔨 Building AirLLMEasy for {system}...")
     print("=" * 55)
 
     # Make sure we're in the correct directory
@@ -126,7 +126,7 @@ def _generate_desktop_file(project_dir: str):
 
     content = f"""\
 [Desktop Entry]
-Name=AI Local Manager
+Name=AirLLMEasy
 Comment=Manage and run AI models locally
 Exec={os.path.join(project_dir, 'dist', 'AILocalManager')}
 {'Icon=' + os.path.abspath(icon_path) if has_icon else '# Icon=path/to/icon.png'}
@@ -146,7 +146,7 @@ Categories=Utility;Development;Science;
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build AI Local Manager executable")
+    parser = argparse.ArgumentParser(description="Build AirLLMEasy executable")
     parser.add_argument(
         "--console", action="store_true",
         help="Keep the terminal window visible (useful for debugging)",
