@@ -907,25 +907,23 @@ class ChatTab(QWidget):
 
     def _auto_continue(self, tool_results):
         """Feed tool results back to the AI so it can continue with write operations."""
-        # Build a summary of what was read
-        results_text = "Tool execution results:\n"
+        # Build a summary of what was read for the AI (FULL context)
+        ai_followup = "Tool execution results:\n"
         for r in tool_results:
-            results_text += f"\n[{r['tool']}] {r['result'][:2000]}\n"
-        results_text += "\nNow please proceed with the modifications based on the file contents above. Use modify_file or create_file tool calls."
+            ai_followup += f"\n[{r['tool']}] {r['result']}\n"
+        ai_followup += "\nAbove is the content you requested. Now, please fulfill the original user request by using the appropriate tool calls (e.g., modify_file or create_file)."
         
-        # Add as a system-injected user follow-up
-        self.conversation_history.append({"role": "user", "content": results_text})
-        self._add_system_message("🔄 Auto-continuing: feeding read results back to AI...")
+        # Add to history
+        self.conversation_history.append({"role": "user", "content": ai_followup})
+        self._add_system_message("🔄 Results gathered. AI is now processing the edit...")
         
-        # Re-send with full context
+        # Re-run the chain
         self._add_assistant_header()
         
-        # Build system prompt again
         system_prompt = self.config.system_prompt
         if self.config.file_ops_enabled and self.workspace_mgr.allowed_folders:
             system_prompt += self.workspace_mgr.build_system_prompt_fragment()
 
-        # Determine backend
         if self.ollama_radio.isChecked():
             backend = self.ollama
             model = self.model_combo.currentText()
@@ -937,7 +935,7 @@ class ChatTab(QWidget):
             model = None
 
         self.chat_worker = ChatWorker(
-            backend, model, results_text,
+            backend, model, ai_followup,
             system_prompt=system_prompt,
             max_tokens=self.tokens_spin.value(),
             temperature=self.temp_spin.value(),
@@ -946,9 +944,6 @@ class ChatTab(QWidget):
         self.chat_worker.token_received.connect(self._on_token_received)
         self.chat_worker.finished.connect(self._on_chat_finished)
         self.chat_worker.error.connect(self._on_chat_error)
-
-        self.send_btn.setEnabled(False)
-        self.send_btn.setText("⏳ Continuing…")
         self.chat_worker.start()
 
     def _on_chat_error(self, error: str):
@@ -1095,10 +1090,15 @@ class ChatTab(QWidget):
             self.file_ops_log.addItem(item)
             self.file_ops_log.scrollToBottom()
 
-            # Show in chat
+            # Show in chat (short summary for the user)
             if is_error:
-                self._add_system_message(f"❌ Tool failed: {result}")
+                self._add_system_message(f"❌ Tool failed: {result[:100]}...")
             else:
-                self._add_system_message(f"✅ {str(result)[:120]}")
+                # If it's a read operation, just show a confirmation instead of the whole file
+                if tool_name in ["read_file", "list_directory"]:
+                    path = tc.get("path", "the file")
+                    self._add_system_message(f"✅ Successfully read {path}")
+                else:
+                    self._add_system_message(f"✅ Executed {tool_name}: {str(result)[:100]}...")
         
         return results
