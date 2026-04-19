@@ -244,19 +244,27 @@ class WorkspacePanel(QFrame):
         header_row.addWidget(title)
         header_row.addStretch()
 
-        self.add_folder_btn = QPushButton("➕ Add Folder")
+        self.add_file_btn = QPushButton("📄 File")
+        self.add_file_btn.setObjectName("GhostBtn")
+        self.add_file_btn.setFixedHeight(28)
+        self.add_file_btn.setToolTip("Add specific file")
+        self.add_file_btn.setStyleSheet("padding: 2px 8px; font-size: 11px;")
+        self.add_file_btn.clicked.connect(self._add_file)
+        header_row.addWidget(self.add_file_btn)
+
+        self.add_folder_btn = QPushButton("📂 Folder")
         self.add_folder_btn.setObjectName("GhostBtn")
         self.add_folder_btn.setFixedHeight(28)
         self.add_folder_btn.setToolTip("Add workspace folder")
-        self.add_folder_btn.setStyleSheet("padding: 2px 10px;")
+        self.add_folder_btn.setStyleSheet("padding: 2px 8px; font-size: 11px;")
         self.add_folder_btn.clicked.connect(self._add_folder)
         header_row.addWidget(self.add_folder_btn)
 
-        self.remove_btn = QPushButton("🗑️ Remove Folder")
+        self.remove_btn = QPushButton("🗑️")
         self.remove_btn.setObjectName("DangerBtn")
         self.remove_btn.setFixedHeight(28)
-        self.remove_btn.setToolTip("Remove selected folder")
-        self.remove_btn.setStyleSheet("padding: 2px 10px; font-size: 11px;")
+        self.remove_btn.setToolTip("Remove selected item")
+        self.remove_btn.setStyleSheet("padding: 2px 6px;")
         self.remove_btn.clicked.connect(self._remove_folder)
         header_row.addWidget(self.remove_btn)
         
@@ -287,12 +295,14 @@ class WorkspacePanel(QFrame):
 
     def _load_folders(self):
         self.folder_list.clear()
+        import os
         for folder in self.config.workspace_folders:
             self.workspace_mgr.add_folder(folder)
             # Show short name
             parts = folder.replace("\\", "/").split("/")
             short = "/".join(parts[-2:]) if len(parts) > 2 else folder
-            item = QListWidgetItem(f"📂 {short}")
+            icon = "📄" if os.path.isfile(folder) else "📂"
+            item = QListWidgetItem(f"{icon} {short}")
             item.setData(Qt.UserRole, folder)
             item.setToolTip(folder)
             self.folder_list.addItem(item)
@@ -309,11 +319,27 @@ class WorkspacePanel(QFrame):
                 self._load_folders()
                 self.folders_changed.emit()
 
+    def _add_file(self):
+        files, _ = QFileDialog.getOpenFileNames(self, "Select workspace files", "", "All Files (*)")
+        if files:
+            added = False
+            folders = self.config.workspace_folders
+            for f in files:
+                if self.workspace_mgr.add_folder(f):
+                    if f not in folders:
+                        folders.append(f)
+                        added = True
+            if added:
+                self.config.workspace_folders = folders
+                self.config.save()
+                self._load_folders()
+                self.folders_changed.emit()
+
     def _show_folder_context_menu(self, pos):
         item = self.folder_list.itemAt(pos)
         if item:
             menu = QMenu(self)
-            remove_action = QAction("🗑️ Remove Folder", self)
+            remove_action = QAction("🗑️ Remove", self)
             remove_action.triggered.connect(lambda: self._remove_specific_folder(item))
             menu.addAction(remove_action)
             menu.exec(self.folder_list.mapToGlobal(pos))
@@ -586,6 +612,7 @@ class ChatTab(QWidget):
 
         # Workspace panel
         self.workspace_panel = WorkspacePanel(self.config, self.workspace_mgr, self)
+        self.workspace_panel.folders_changed.connect(self._save_current_session)
         right_layout.addWidget(self.workspace_panel)
 
         # File ops log

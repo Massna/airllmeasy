@@ -32,9 +32,9 @@ class WorkspaceManager:
     # Folder management
     # ------------------------------------------------------------------
     def add_folder(self, folder_path: str) -> bool:
-        """Add a folder to the allowed workspace list."""
+        """Add a folder or file to the allowed workspace list."""
         p = Path(folder_path).resolve()
-        if not p.is_dir():
+        if not p.exists():
             return False
         if p not in self._allowed_folders:
             self._allowed_folders.append(p)
@@ -52,9 +52,14 @@ class WorkspaceManager:
         return [str(f) for f in self._allowed_folders]
 
     def is_path_allowed(self, target: str) -> bool:
-        """Check whether *target* is inside one of the allowed folders."""
+        """Check whether *target* is inside one of the allowed folders, or matches an allowed file."""
         t = Path(target).resolve()
-        return any(self._is_subpath(t, f) for f in self._allowed_folders)
+        for f in self._allowed_folders:
+            if f.is_file() and t == f:
+                return True
+            if f.is_dir() and self._is_subpath(t, f):
+                return True
+        return False
 
     # ------------------------------------------------------------------
     # File operations
@@ -229,12 +234,11 @@ class WorkspaceManager:
         folders_str = "\n".join(f"  - {f}" for f in self._allowed_folders)
         return f"""
 
-======================================================================
 SYSTEM CAPABILITIES & AUTONOMOUS PROGRAMMER PERSONA
 ======================================================================
 You are an expert autonomous software engineer and AI agent. You have 
 direct access to the user's local file system workspace. The user has 
-granted you read/write permission to the following allowed folders:
+granted you read/write permission to the following allowed paths (folders and/or files):
 {folders_str}
 
 As an autonomous coding agent (similar to Claude Code), your goal is to 
