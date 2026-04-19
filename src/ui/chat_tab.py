@@ -235,6 +235,8 @@ class WorkspacePanel(QFrame):
 
         # Header row
         header_row = QHBoxLayout()
+        header_row.setContentsMargins(0, 0, 0, 0)
+        
         icon_label = QLabel("📁")
         icon_label.setStyleSheet("font-size: 18px;")
         header_row.addWidget(icon_label)
@@ -244,31 +246,38 @@ class WorkspacePanel(QFrame):
         header_row.addWidget(title)
         header_row.addStretch()
 
-        self.add_file_btn = QPushButton("📄 File")
+        self.remove_btn = QPushButton("🗑️")
+        self.remove_btn.setObjectName("DangerBtn")
+        self.remove_btn.setFixedSize(28, 28)
+        self.remove_btn.setToolTip("Remove selected item")
+        self.remove_btn.setStyleSheet("padding: 2px;")
+        self.remove_btn.clicked.connect(self._remove_folder)
+        header_row.addWidget(self.remove_btn)
+        
+        layout.addLayout(header_row)
+
+        # Buttons row
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(6)
+        btn_row.setContentsMargins(0, 0, 0, 4)
+
+        self.add_file_btn = QPushButton("📄 Add File")
         self.add_file_btn.setObjectName("GhostBtn")
         self.add_file_btn.setFixedHeight(28)
         self.add_file_btn.setToolTip("Add specific file")
         self.add_file_btn.setStyleSheet("padding: 2px 8px; font-size: 11px;")
         self.add_file_btn.clicked.connect(self._add_file)
-        header_row.addWidget(self.add_file_btn)
+        btn_row.addWidget(self.add_file_btn)
 
-        self.add_folder_btn = QPushButton("📂 Folder")
+        self.add_folder_btn = QPushButton("📂 Add Folder")
         self.add_folder_btn.setObjectName("GhostBtn")
         self.add_folder_btn.setFixedHeight(28)
         self.add_folder_btn.setToolTip("Add workspace folder")
         self.add_folder_btn.setStyleSheet("padding: 2px 8px; font-size: 11px;")
         self.add_folder_btn.clicked.connect(self._add_folder)
-        header_row.addWidget(self.add_folder_btn)
+        btn_row.addWidget(self.add_folder_btn)
 
-        self.remove_btn = QPushButton("🗑️")
-        self.remove_btn.setObjectName("DangerBtn")
-        self.remove_btn.setFixedHeight(28)
-        self.remove_btn.setToolTip("Remove selected item")
-        self.remove_btn.setStyleSheet("padding: 2px 6px;")
-        self.remove_btn.clicked.connect(self._remove_folder)
-        header_row.addWidget(self.remove_btn)
-        
-        layout.addLayout(header_row)
+        layout.addLayout(btn_row)
 
         # Folder list
         self.folder_list = QListWidget()
@@ -475,9 +484,9 @@ class ChatTab(QWidget):
         self.model_combo.setMinimumWidth(200)
         config_layout.addWidget(self.model_combo)
 
-        self.refresh_models_btn = QPushButton("🔄")
+        self.refresh_models_btn = QPushButton("↻ Refresh")
         self.refresh_models_btn.setObjectName("GhostBtn")
-        self.refresh_models_btn.setFixedSize(40, 32)
+        self.refresh_models_btn.setFixedHeight(32)
         self.refresh_models_btn.clicked.connect(self._refresh_models)
         config_layout.addWidget(self.refresh_models_btn)
 
@@ -599,7 +608,7 @@ class ChatTab(QWidget):
 
         # ── Right: Sidebar ──
         right_sidebar = QWidget()
-        right_sidebar.setFixedWidth(240)
+        right_sidebar.setFixedWidth(260)
         right_sidebar.setStyleSheet("""
             QWidget {
                 background-color: rgba(12,12,20,0.5);
