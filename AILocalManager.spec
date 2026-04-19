@@ -1,12 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
+import platform
 
+_system = platform.system()
+_sep = ';' if _system == 'Windows' else ':'
+_strip = _system != 'Windows'
+_console = False  # Set to True for debug builds
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
     datas=[('src', 'src')],
-    hiddenimports=['PySide6.QtWidgets', 'PySide6.QtCore', 'PySide6.QtGui', 'requests', 'httpx'],
+    hiddenimports=[
+        'PySide6.QtWidgets',
+        'PySide6.QtCore',
+        'PySide6.QtGui',
+        'requests',
+        'httpx',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -25,11 +36,11 @@ exe = EXE(
     name='AILocalManager',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=_strip,
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=_console,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

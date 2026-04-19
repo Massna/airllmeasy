@@ -74,23 +74,64 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## 🏗️ Build Executable (.exe)
+## 🏗️ Build Executable
+
+The build script auto-detects the current OS and produces a standalone binary.
+
+### Windows
 
 ```bash
-# Install PyInstaller
 pip install pyinstaller
-
-# Option 1: Use the build script
 python build_exe.py
-
-# Option 2: Use the spec file
-pyinstaller AILocalManager.spec
-
-# Option 3: Direct command
-pyinstaller --name="AILocalManager" --windowed --onefile main.py
 ```
 
-The executable will be created at `dist/AILocalManager.exe`
+Output: `dist/AILocalManager.exe`
+
+### Linux
+
+```bash
+# Install system dependencies for Qt (Debian/Ubuntu)
+sudo apt-get install -y libegl1 libxkbcommon0 libxcb-cursor0 \
+    libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libdbus-1-3
+
+pip install pyinstaller
+python build_exe.py
+```
+
+Output: `dist/AILocalManager` (+ a `.desktop` launcher file)
+
+To add to your app menu:
+```bash
+cp dist/AILocalManager.desktop ~/.local/share/applications/
+```
+
+### macOS
+
+```bash
+pip install pyinstaller
+python build_exe.py
+```
+
+Output: `dist/AILocalManager`
+
+### Options
+
+```bash
+python build_exe.py --console   # Keep terminal visible (debug mode)
+```
+
+### Using the spec file directly
+
+```bash
+pyinstaller AILocalManager.spec
+```
+
+### CI/CD (GitHub Actions)
+
+The project includes a workflow at `.github/workflows/build.yml` that:
+- Builds Linux and Windows binaries on every version tag (`v*`)
+- Can be triggered manually via the GitHub Actions UI
+- Automatically creates a GitHub Release with the binaries attached
 
 ## 🚀 Usage
 
