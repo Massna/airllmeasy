@@ -913,9 +913,9 @@ class ChatTab(QWidget):
             ai_followup += f"\n[{r['tool']}] {r['result']}\n"
         ai_followup += "\nAbove is the content you requested. Now, please fulfill the original user request by using the appropriate tool calls (e.g., modify_file or create_file)."
         
-        # Add to history
-        self.conversation_history.append({"role": "user", "content": ai_followup})
-        self._add_system_message("🔄 Results gathered. AI is now processing the edit...")
+        # Add to history as a system observation
+        self.conversation_history.append({"role": "system", "content": ai_followup})
+        self._add_system_message("🔄 Data retrieved. AI is now calculating the edit...")
         
         # Re-run the chain
         self._add_assistant_header()

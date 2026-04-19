@@ -278,6 +278,8 @@ CRITICAL RULES:
 2. DONT JUST TALK. If you say you are going to edit a file, you MUST include the <tool_call> block in that same response.
 3. ALWAYS use FULL ABSOLUTE PATHS.
 4. For modify_file, the "content" field must contain the ENTIRE file content.
+5. NO REPETITION: Do NOT quote or repeat the file content in your conversational response. Just execute the edits.
+6. CONCISE: Be extremely concise in your verbal explanation. Focus on the tool calls.
 
 Example of exploring:
 <tool_call>

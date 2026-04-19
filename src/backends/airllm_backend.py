@@ -430,7 +430,13 @@ class AirLLMBackend:
             for msg in conversation_history:
                 role = msg.get("role", "user")
                 content = msg.get("content", "")
-                if role == "user":
+        if conversation_history:
+            for msg in conversation_history:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if role == "system":
+                    full_prompt += f"<|system|>\n{content}\n"
+                elif role == "user":
                     full_prompt += f"<|user|>\n{content}\n"
                 elif role == "assistant":
                     full_prompt += f"<|assistant|>\n{content}\n"
