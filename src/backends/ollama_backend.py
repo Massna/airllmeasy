@@ -105,23 +105,34 @@ class OllamaBackend:
     
     def chat(self, model_name: str, message: str,
              system_prompt: str = "", max_tokens: int = 512, temperature: float = 0.7,
-             stream_callback: Optional[Callable[[str], None]] = None) -> str:
+             stream_callback: Optional[Callable[[str], None]] = None,
+             conversation_history: Optional[list] = None) -> str:
         """Sends a message to the model via Ollama."""
         try:
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            
+            # Add conversation history for context
+            if conversation_history:
+                for msg in conversation_history:
+                    messages.append({"role": msg["role"], "content": msg["content"]})
+            
+            # Add current message
+            messages.append({"role": "user", "content": message})
+
             payload = {
                 "model": model_name,
-                "prompt": message,
+                "messages": messages,
                 "stream": True,
                 "options": {
                     "num_predict": max_tokens,
                     "temperature": temperature
                 }
             }
-            if system_prompt:
-                payload["system"] = system_prompt
 
             response = self.session.post(
-                f"{self.base_url}/api/generate",
+                f"{self.base_url}/api/chat",
                 json=payload,
                 stream=True,
                 timeout=None
@@ -132,9 +143,10 @@ class OllamaBackend:
                 if line:
                     import json
                     data = json.loads(line)
-                    token = data.get("response", "")
+                    msg = data.get("message", {})
+                    token = msg.get("content", "")
                     full_response += token
-                    if stream_callback:
+                    if stream_callback and token:
                         stream_callback(token)
             
             return full_response

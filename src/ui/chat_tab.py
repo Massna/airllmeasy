@@ -25,7 +25,7 @@ class ChatWorker(QThread):
     finished = Signal(str)
     error = Signal(str)
 
-    def __init__(self, backend, model, message, system_prompt="", max_tokens=256, temperature=0.7):
+    def __init__(self, backend, model, message, system_prompt="", max_tokens=256, temperature=0.7, conversation_history=None):
         super().__init__()
         self.backend = backend
         self.model = model
@@ -33,6 +33,7 @@ class ChatWorker(QThread):
         self.system_prompt = system_prompt
         self.max_tokens = max_tokens
         self.temperature = temperature
+        self.conversation_history = conversation_history or []
 
     def run(self):
         try:
@@ -43,7 +44,8 @@ class ChatWorker(QThread):
                     system_prompt=self.system_prompt,
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
-                    stream_callback=lambda t: self.token_received.emit(t)
+                    stream_callback=lambda t: self.token_received.emit(t),
+                    conversation_history=self.conversation_history
                 )
             elif isinstance(self.backend, LMStudioBackend):
                 response = self.backend.chat(
@@ -52,7 +54,8 @@ class ChatWorker(QThread):
                     system_prompt=self.system_prompt,
                     max_tokens=self.max_tokens,
                     temperature=self.temperature,
-                    stream_callback=lambda t: self.token_received.emit(t)
+                    stream_callback=lambda t: self.token_received.emit(t),
+                    conversation_history=self.conversation_history
                 )
             elif isinstance(self.backend, AirLLMBackend):
                 response = self.backend.chat(
@@ -833,7 +836,8 @@ class ChatTab(QWidget):
             backend, model, message,
             system_prompt=system_prompt,
             max_tokens=self.tokens_spin.value(),
-            temperature=self.temp_spin.value()
+            temperature=self.temp_spin.value(),
+            conversation_history=self.conversation_history[:-1]  # exclude the message we just added
         )
         self.chat_worker.token_received.connect(self._on_token_received)
         self.chat_worker.finished.connect(self._on_chat_finished)
@@ -887,7 +891,64 @@ class ChatTab(QWidget):
 
         # Process file operations from the response
         if self.config.file_ops_enabled and self.workspace_mgr.allowed_folders:
-            self._process_file_operations(response)
+            tool_results = self._process_file_operations(response)
+            
+            # Auto-continue: if we only did read/list operations, feed results back
+            if tool_results and self._should_auto_continue(tool_results):
+                self._auto_continue(tool_results)
+
+    def _should_auto_continue(self, tool_results):
+        """Check if tool results are read-only and need a follow-up from the AI."""
+        if not tool_results:
+            return False
+        read_tools = {"read_file", "list_directory"}
+        return all(r["tool"] in read_tools for r in tool_results)
+
+    def _auto_continue(self, tool_results):
+        """Feed tool results back to the AI so it can continue with write operations."""
+        # Build a summary of what was read
+        results_text = "Tool execution results:\n"
+        for r in tool_results:
+            results_text += f"\n[{r['tool']}] {r['result'][:2000]}\n"
+        results_text += "\nNow please proceed with the modifications based on the file contents above. Use modify_file or create_file tool calls."
+        
+        # Add as a system-injected user follow-up
+        self.conversation_history.append({"role": "user", "content": results_text})
+        self._add_system_message("🔄 Auto-continuing: feeding read results back to AI...")
+        
+        # Re-send with full context
+        self._add_assistant_header()
+        
+        # Build system prompt again
+        system_prompt = self.config.system_prompt
+        if self.config.file_ops_enabled and self.workspace_mgr.allowed_folders:
+            system_prompt += self.workspace_mgr.build_system_prompt_fragment()
+
+        # Determine backend
+        if self.ollama_radio.isChecked():
+            backend = self.ollama
+            model = self.model_combo.currentText()
+        elif self.lmstudio_radio.isChecked():
+            backend = self.lmstudio
+            model = self.model_combo.currentText()
+        else:
+            backend = self.airllm
+            model = None
+
+        self.chat_worker = ChatWorker(
+            backend, model, results_text,
+            system_prompt=system_prompt,
+            max_tokens=self.tokens_spin.value(),
+            temperature=self.temp_spin.value(),
+            conversation_history=self.conversation_history[:-1]
+        )
+        self.chat_worker.token_received.connect(self._on_token_received)
+        self.chat_worker.finished.connect(self._on_chat_finished)
+        self.chat_worker.error.connect(self._on_chat_error)
+
+        self.send_btn.setEnabled(False)
+        self.send_btn.setText("⏳ Continuing…")
+        self.chat_worker.start()
 
     def _on_chat_error(self, error: str):
         self.chat_display.append(
@@ -994,13 +1055,18 @@ class ChatTab(QWidget):
     # ─────────────────────────── File Operations ──────────────────────────
 
     def _process_file_operations(self, response: str):
-        """Parse and execute file operations / extension tools from the AI response."""
+        """Parse and execute file operations / extension tools from the AI response.
+        
+        Returns a list of dicts with 'tool' and 'result' for auto-continue logic.
+        """
         tool_calls = WorkspaceManager.parse_tool_calls(response)
         if not tool_calls:
-            return
+            return []
 
         # Build lookup table for extension handlers
         ext_handlers = {t["name"]: t["handler"] for t in self.extension_mgr.get_all_tools()}
+        
+        results = []
 
         for tc in tool_calls:
             tool_name = tc.get("tool", "unknown").lower()
@@ -1015,14 +1081,16 @@ class ChatTab(QWidget):
                 # Fallback to standard file operations
                 result = self.workspace_mgr.execute_tool_call(tc)
 
+            results.append({"tool": tool_name, "result": str(result)})
+
             # Log to the file ops panel
-            is_error = result.startswith("Error")
+            is_error = str(result).startswith("Error")
             icon = "❌" if is_error else "✅"
             color = QColor("#f38ba8") if is_error else QColor("#a6e3a1")
 
-            item = QListWidgetItem(f"{icon} {tool_name}: {result[:60]}")
+            item = QListWidgetItem(f"{icon} {tool_name}: {str(result)[:60]}")
             item.setForeground(color)
-            item.setToolTip(result)
+            item.setToolTip(str(result))
             self.file_ops_log.addItem(item)
             self.file_ops_log.scrollToBottom()
 
@@ -1030,4 +1098,6 @@ class ChatTab(QWidget):
             if is_error:
                 self._add_system_message(f"❌ Tool failed: {result}")
             else:
-                self._add_system_message(f"✅ {result}")
+                self._add_system_message(f"✅ {str(result)[:120]}")
+        
+        return results

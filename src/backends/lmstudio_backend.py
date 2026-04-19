@@ -118,12 +118,19 @@ class LMStudioBackend:
     
     def chat(self, model_name: str, message: str,
              system_prompt: str = "", max_tokens: int = 512, temperature: float = 0.7,
-             stream_callback: Optional[Callable[[str], None]] = None) -> str:
+             stream_callback: Optional[Callable[[str], None]] = None,
+             conversation_history: Optional[list] = None) -> str:
         """Sends a message to the model via LMStudio (OpenAI compatible API)."""
         try:
             messages = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
+            
+            # Add conversation history for context
+            if conversation_history:
+                for msg in conversation_history:
+                    messages.append({"role": msg["role"], "content": msg["content"]})
+            
             messages.append({"role": "user", "content": message})
 
             payload = {
