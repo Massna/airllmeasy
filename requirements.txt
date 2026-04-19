@@ -1,0 +1,5 @@
+PySide6>=6.6.0
+airllm>=2.8.0
+requests>=2.31.0
+httpx>=0.25.0
+pyinstaller>=6.0.0
