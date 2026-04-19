@@ -4,8 +4,8 @@ Build script for AI Local Manager — creates a standalone executable
 using PyInstaller for Windows, Linux, or macOS.
 
 Usage:
-    python build_exe.py              # auto-detects the current OS
-    python build_exe.py --console    # keep terminal window (useful for debugging)
+    python build.py              # auto-detects the current OS
+    python build.py --console    # keep terminal window (useful for debugging)
 
 Or directly with PyInstaller:
     pyinstaller AILocalManager.spec
