@@ -1,4 +1,4 @@
-"""Janela principal da aplicação."""
+"""Main application window."""
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget,
     QStatusBar, QMenuBar, QMenu, QToolBar, QLabel, QPushButton,
@@ -14,7 +14,7 @@ from ..utils.config import Config
 
 
 class MainWindow(QMainWindow):
-    """Janela principal do AI Local Manager."""
+    """Main window of the AI Local Manager."""
     
     def __init__(self, config: Config):
         super().__init__()
@@ -22,7 +22,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("AI Local Manager")
         self.setMinimumSize(900, 600)
         
-        # Restaura geometria salva
+        # Restore saved geometry
         geometry = self.config.get("window_geometry")
         if geometry:
             self.restoreGeometry(bytes.fromhex(geometry))
@@ -35,16 +35,16 @@ class MainWindow(QMainWindow):
         self._apply_theme()
     
     def _setup_ui(self):
-        """Configura a interface principal."""
-        # Widget central
+        """Set up the main interface."""
+        # Central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Layout principal
+        # Main layout
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(10, 10, 10, 10)
         
-        # Header com info do backend atual
+        # Header with current backend info
         header = QHBoxLayout()
         self.backend_label = QLabel()
         self._update_backend_label()
@@ -52,70 +52,70 @@ class MainWindow(QMainWindow):
         header.addStretch()
         main_layout.addLayout(header)
         
-        # Abas principais
+        # Main tabs
         self.tab_widget = QTabWidget()
         self.tab_widget.setDocumentMode(True)
         
-        # Aba de Download
+        # Download Tab
         self.download_tab = DownloadTab(self.config)
-        self.tab_widget.addTab(self.download_tab, "📥 Download de Modelos")
+        self.tab_widget.addTab(self.download_tab, "📥 Model Download")
         
-        # Aba de Chat
+        # Chat Tab
         self.chat_tab = ChatTab(self.config)
         self.tab_widget.addTab(self.chat_tab, "💬 Chat")
         
-        # Aba de Configurações
+        # Settings Tab
         self.settings_tab = SettingsTab(self.config)
         self.settings_tab.settings_changed.connect(self._on_settings_changed)
-        self.tab_widget.addTab(self.settings_tab, "⚙️ Configurações")
+        self.tab_widget.addTab(self.settings_tab, "⚙️ Settings")
         
         main_layout.addWidget(self.tab_widget)
     
     def _setup_menu(self):
-        """Configura o menu da aplicação."""
+        """Set up the application menu."""
         menubar = self.menuBar()
         
-        # Menu Arquivo
-        file_menu = menubar.addMenu("&Arquivo")
+        # File Menu
+        file_menu = menubar.addMenu("&File")
         
-        refresh_action = QAction("&Atualizar Lista", self)
+        refresh_action = QAction("&Refresh List", self)
         refresh_action.setShortcut("F5")
         refresh_action.triggered.connect(self._refresh_models)
         file_menu.addAction(refresh_action)
         
         file_menu.addSeparator()
         
-        exit_action = QAction("&Sair", self)
+        exit_action = QAction("&Exit", self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
-        # Menu Backend
+        # Backend Menu
         backend_menu = menubar.addMenu("&Backend")
         
-        ollama_action = QAction("Usar &Ollama (A)", self)
+        ollama_action = QAction("Use &Ollama (A)", self)
         ollama_action.triggered.connect(lambda: self._switch_backend("ollama"))
         backend_menu.addAction(ollama_action)
         
-        lmstudio_action = QAction("Usar &LMStudio (B)", self)
+        lmstudio_action = QAction("Use &LMStudio (B)", self)
         lmstudio_action.triggered.connect(lambda: self._switch_backend("lmstudio"))
         backend_menu.addAction(lmstudio_action)
         
-        # Menu Ajuda
-        help_menu = menubar.addMenu("A&juda")
+        # Help Menu
+        help_menu = menubar.addMenu("&Help")
         
-        about_action = QAction("&Sobre", self)
+        about_action = QAction("&About", self)
         about_action.triggered.connect(self._show_about)
         help_menu.addAction(about_action)
     
     def _setup_statusbar(self):
-        """Configura a barra de status."""
+        """Set up the status bar."""
         self.statusbar = QStatusBar()
         self.setStatusBar(self.statusbar)
-        self.statusbar.showMessage("Pronto")
+        self.statusbar.showMessage("Ready")
     
     def _apply_theme(self):
-        """Aplica o tema selecionado."""
+        """Apply the selected theme."""
         if self.config.theme == "dark":
             self.setStyleSheet("""
                 QMainWindow, QWidget {
@@ -275,10 +275,10 @@ class MainWindow(QMainWindow):
                 }
             """)
         else:
-            self.setStyleSheet("")  # Tema claro padrão do sistema
+            self.setStyleSheet("")  # Default light system theme
     
     def _update_backend_label(self):
-        """Atualiza o label do backend atual."""
+        """Update the current backend label."""
         backend = self.config.download_backend
         if backend == "ollama":
             text = "🅰️ Backend: Ollama"
@@ -300,45 +300,45 @@ class MainWindow(QMainWindow):
         """)
     
     def _switch_backend(self, backend: str):
-        """Alterna entre backends."""
+        """Switch between backends."""
         self.config.download_backend = backend
         self.config.save()
         self._update_backend_label()
         self.download_tab.refresh_for_backend()
-        self.statusbar.showMessage(f"Backend alterado para {backend.upper()}")
+        self.statusbar.showMessage(f"Backend changed to {backend.upper()}")
     
     def _refresh_models(self):
-        """Atualiza a lista de modelos."""
+        """Refresh the model list."""
         self.download_tab.refresh_models()
-        self.statusbar.showMessage("Lista de modelos atualizada")
+        self.statusbar.showMessage("Model list updated")
     
     def _on_settings_changed(self):
-        """Chamado quando as configurações mudam."""
+        """Called when settings change."""
         self._update_backend_label()
         self._apply_theme()
         self.download_tab.refresh_for_backend()
     
     def _show_about(self):
-        """Mostra diálogo Sobre."""
+        """Show the About dialog."""
         QMessageBox.about(
             self,
-            "Sobre AI Local Manager",
+            "About AI Local Manager",
             """<h2>AI Local Manager</h2>
-            <p>Versão 1.0.0</p>
-            <p>Gerencie e execute modelos de IA localmente.</p>
+            <p>Version 1.0.0</p>
+            <p>Manage and run AI models locally.</p>
             <br>
-            <p><b>Backends suportados:</b></p>
+            <p><b>Supported backends:</b></p>
             <ul>
-                <li>🅰️ Ollama - Download e execução</li>
-                <li>🅱️ LMStudio - Download e execução</li>
-                <li>🚀 AirLLM - Execução otimizada para pouca memória</li>
+                <li>🅰️ Ollama - Download and execution</li>
+                <li>🅱️ LMStudio - Download and execution</li>
+                <li>🚀 AirLLM - Memory-optimized execution</li>
             </ul>
             """
         )
     
     def closeEvent(self, event):
-        """Salva estado ao fechar."""
-        # Salva geometria da janela
+        """Save state on close."""
+        # Save window geometry
         self.config.set("window_geometry", self.saveGeometry().toHex().data().decode())
         self.config.save()
         event.accept()

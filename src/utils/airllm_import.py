@@ -1,7 +1,7 @@
-"""Ajusta sys.path para localizar o pacote Python airllm (incl. instalações editáveis via .pth).
+"""Adjusts sys.path to locate the Python airllm package (incl. editable installs via .pth).
 
-Inclui auto-detecção automática que varre Python(s) do sistema, venvs, e
-caminhos comuns para encontrar o pacote airllm sem intervenção do usuário.
+Includes automatic auto-detection that scans system Python(s), venvs, and
+common paths to find the airllm package without user intervention.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ _configured_packages_path: Optional[str] = None
 
 
 def _has_airllm_package(site_or_parent: Path) -> bool:
-    """Verifica se existe um pacote importável airllm diretamente sob este diretório."""
+    """Checks if an importable airllm package exists directly under this directory."""
     try:
         for child in site_or_parent.iterdir():
             if not child.is_dir():
@@ -33,7 +33,7 @@ def _has_airllm_package(site_or_parent: Path) -> bool:
             init_py = child / "__init__.py"
             if init_py.is_file():
                 return True
-            # namespace ou só .pyd — aceita pasta airllm com algum .py
+            # namespace or just .pyd — accept airllm folder with some .py
             if any(child.glob("*.py")):
                 return True
     except OSError:
@@ -53,7 +53,7 @@ def _find_airllm_parent_walk_up(start: Path, max_up: int = 8) -> Optional[Path]:
 
 
 def _find_airllm_shallow_search(root: Path, max_depth: int = 4, max_visits: int = 400) -> Optional[Path]:
-    """Busca limitada por site-packages com airllm (ancestral do venv ou pasta ampla)."""
+    """Limited search for site-packages with airllm (venv ancestor or broad folder)."""
     budget = [max_visits]
 
     def scan(d: Path, depth: int) -> Optional[Path]:
@@ -76,7 +76,7 @@ def _find_airllm_shallow_search(root: Path, max_depth: int = 4, max_visits: int 
         return None
 
     try:
-        # Evita varrer pastas enormes (ex.: raiz do usuário com milhares de itens)
+        # Avoid scanning huge folders (e.g., user root with thousands of items)
         try:
             n = sum(1 for _ in root.iterdir())
             if n > 64:
@@ -90,9 +90,9 @@ def _find_airllm_shallow_search(root: Path, max_depth: int = 4, max_visits: int 
 
 def resolve_airllm_site_packages(user_path: str) -> Optional[Path]:
     """
-    Resolve até o diretório que deve entrar no sys.path (pai do pacote airllm).
+    Resolves to the directory that should be added to sys.path (parent of the airllm package).
 
-    Aceita site-packages, pasta airllm, raiz do venv, ou pastas acima (sobe diretórios).
+    Accepts site-packages, airllm folder, venv root, or parent folders (walks up directories).
     """
     raw = (user_path or "").strip()
     if not raw:
@@ -105,7 +105,7 @@ def resolve_airllm_site_packages(user_path: str) -> Optional[Path]:
     if not p.is_dir():
         return None
 
-    # Usuário selecionou .../site-packages/airllm
+    # User selected .../site-packages/airllm
     if p.name.lower() == "airllm" and p.parent.is_dir():
         if _has_airllm_package(p.parent):
             return p.parent
@@ -169,8 +169,8 @@ def _parse_egg_link(egg_link: Path, out: List[Path]) -> None:
 
 def collect_editable_and_pth_paths(site_packages: Path) -> List[Path]:
     """
-    Caminhos extras declarados em .pth e .egg-link dentro de site-packages.
-    Necessário porque o Python só aplica .pth na inicialização — não após mudar sys.path em runtime.
+    Extra paths declared in .pth and .egg-link files inside site-packages.
+    Needed because Python only processes .pth files at startup — not after changing sys.path at runtime.
     """
     extra: List[Path] = []
     if not site_packages.is_dir():
@@ -206,9 +206,9 @@ def _remove_tracked_from_syspath() -> None:
 
 def apply_airllm_packages_path(user_path: Optional[str]) -> Tuple[bool, Optional[str]]:
     """
-    Insere no sys.path o site-packages e caminhos de instalação editável (.pth / .egg-link).
+    Inserts site-packages and editable install paths (.pth / .egg-link) into sys.path.
 
-    Retorna (ok, caminho site-packages resolvido ou None).
+    Returns (ok, resolved site-packages path or None).
     """
     global _last_inserted_paths
 
@@ -226,7 +226,7 @@ def apply_airllm_packages_path(user_path: Optional[str]) -> Tuple[bool, Optional
 
     extras = collect_editable_and_pth_paths(resolved)
 
-    # Ordem: primeiro os caminhos do .pth (código font do editable), depois site-packages.
+    # Order: .pth paths first (editable source code), then site-packages.
     for ep in reversed(extras):
         s = str(ep)
         if s not in sys.path:
@@ -254,8 +254,8 @@ def ensure_airllm_path() -> None:
 
 def try_import_airllm() -> Tuple[bool, Optional[str]]:
     """
-    Tenta importar airllm após aplicar o path configurado.
-    Retorna (sucesso, mensagem de erro ou None).
+    Tries to import airllm after applying the configured path.
+    Returns (success, error message or None).
     """
     ensure_airllm_path()
     try:
@@ -268,11 +268,11 @@ def try_import_airllm() -> Tuple[bool, Optional[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Auto-detecção do pacote airllm
+# Auto-detection of the airllm package
 # ---------------------------------------------------------------------------
 
 def _find_all_python_executables() -> List[str]:
-    """Descobre todos os interpretadores Python disponíveis no sistema."""
+    """Discovers all Python interpreters available on the system."""
     found: List[str] = []
     seen: set[str] = set()
 
@@ -287,10 +287,10 @@ def _find_all_python_executables() -> List[str]:
             seen.add(resolved)
             found.append(path)
 
-    # 1) O próprio interpretador atual
+    # 1) The current interpreter itself
     _add(sys.executable)
 
-    # 2) python / python3 no PATH
+    # 2) python / python3 in PATH
     for name in ("python", "python3"):
         _add(shutil.which(name))
 
@@ -299,7 +299,7 @@ def _find_all_python_executables() -> List[str]:
         py = shutil.which("py")
         if py:
             _add(py)
-            # py -0p lista todas as versões instaladas
+            # py -0p lists all installed versions
             try:
                 r = subprocess.run(
                     [py, "-0p"],
@@ -307,7 +307,7 @@ def _find_all_python_executables() -> List[str]:
                 )
                 if r.returncode == 0:
                     for line in r.stdout.splitlines():
-                        # Formato: " -3.12-64  C:\Python312\python.exe"
+                        # Format: " -3.12-64  C:\Python312\python.exe"
                         parts = line.strip().split()
                         if len(parts) >= 2:
                             candidate = parts[-1].strip("*")
@@ -316,7 +316,7 @@ def _find_all_python_executables() -> List[str]:
             except Exception:
                 pass
 
-        # 4) Locais comuns do Python no Windows
+        # 4) Common Python locations on Windows
         local_app = os.environ.get("LOCALAPPDATA", "")
         if local_app:
             programs = Path(local_app) / "Programs" / "Python"
@@ -340,7 +340,7 @@ def _find_all_python_executables() -> List[str]:
         if not val:
             continue
         conda_root = Path(val)
-        # CONDA_EXE aponta para o executável, subir até a raiz
+        # CONDA_EXE points to the executable, go up to the root
         if conda_root.is_file():
             conda_root = conda_root.parent.parent
         envs_dir = conda_root / "envs"
@@ -362,7 +362,7 @@ def _find_all_python_executables() -> List[str]:
 
 
 def _pip_show_airllm(python_exe: str) -> Optional[Path]:
-    """Executa 'pip show airllm' com o Python dado e retorna o Location."""
+    """Runs 'pip show airllm' with the given Python and returns the Location."""
     try:
         r = subprocess.run(
             [python_exe, "-m", "pip", "show", "airllm"],
@@ -383,21 +383,21 @@ def _pip_show_airllm(python_exe: str) -> Optional[Path]:
 
 
 def _scan_common_venv_locations() -> List[Path]:
-    """Retorna site-packages de venvs em locais comuns perto do projeto."""
+    """Returns site-packages from venvs in common locations near the project."""
     candidates: List[Path] = []
     home = Path.home()
 
-    # Locais onde desenvolvedores costumam criar venvs
+    # Common venv directory names
     venv_names = ("venv", ".venv", "env", ".env", "airllm-env", "airllm_env")
 
-    # Perto do executável / script
+    # Near the executable / script
     base_dirs: List[Path] = []
     try:
         base_dirs.append(Path(sys.executable).resolve().parent)
     except Exception:
         pass
     try:
-        base_dirs.append(Path(__file__).resolve().parent.parent.parent)  # raiz do projeto
+        base_dirs.append(Path(__file__).resolve().parent.parent.parent)  # project root
     except Exception:
         pass
     base_dirs.append(Path.cwd())
@@ -428,42 +428,42 @@ def _scan_common_venv_locations() -> List[Path]:
 
 
 def auto_detect_airllm_path() -> Optional[str]:
-    """Tenta encontrar automaticamente onde o pacote airllm está instalado.
+    """Tries to automatically find where the airllm package is installed.
 
-    Estratégias (em ordem de prioridade):
-      1. Import direto (já está no sys.path)
-      2. ``pip show airllm`` em cada Python encontrado no sistema
-      3. Varredura de venvs em locais comuns
-      4. Varredura de site-packages do(s) Python(s) encontrados
+    Strategies (in priority order):
+      1. Direct import (already in sys.path)
+      2. ``pip show airllm`` on each Python found on the system
+      3. Scan venvs in common locations
+      4. Scan site-packages of found Python(s)
 
-    Retorna o caminho da pasta que deve ser adicionada ao sys.path
-    (geralmente o site-packages), ou None se não encontrou.
+    Returns the path of the folder to add to sys.path
+    (usually site-packages), or None if not found.
     """
-    # 1) Já importável?
+    # 1) Already importable?
     try:
         import airllm  # noqa: F401
-        # Já funciona — retorna o diretório pai do pacote
+        # Already works — return the parent directory of the package
         pkg_dir = Path(airllm.__file__).resolve().parent.parent
-        _log.info("auto_detect: airllm já importável em %s", pkg_dir)
+        _log.info("auto_detect: airllm already importable at %s", pkg_dir)
         return str(pkg_dir)
     except Exception:
         pass
 
-    # 2) pip show em cada Python
+    # 2) pip show on each Python
     pythons = _find_all_python_executables()
     for py in pythons:
         loc = _pip_show_airllm(py)
         if loc is not None:
-            _log.info("auto_detect: pip show encontrou airllm em %s (via %s)", loc, py)
+            _log.info("auto_detect: pip show found airllm at %s (via %s)", loc, py)
             return str(loc)
 
-    # 3) Venvs em locais comuns
+    # 3) Venvs in common locations
     for sp in _scan_common_venv_locations():
         if _has_airllm_package(sp):
-            _log.info("auto_detect: airllm encontrado em venv %s", sp)
+            _log.info("auto_detect: airllm found in venv %s", sp)
             return str(sp)
 
-    # 4) site-packages de cada Python encontrado
+    # 4) site-packages of each found Python
     for py in pythons:
         try:
             r = subprocess.run(
@@ -474,19 +474,19 @@ def auto_detect_airllm_path() -> Optional[str]:
                 for line in r.stdout.splitlines():
                     sp = Path(line.strip())
                     if sp.is_dir() and _has_airllm_package(sp):
-                        _log.info("auto_detect: airllm em site-packages %s (via %s)", sp, py)
+                        _log.info("auto_detect: airllm in site-packages %s (via %s)", sp, py)
                         return str(sp)
         except Exception:
             continue
 
-    _log.info("auto_detect: airllm não encontrado em nenhum local")
+    _log.info("auto_detect: airllm not found in any location")
     return None
 
 
 def auto_detect_and_apply() -> Tuple[bool, Optional[str]]:
-    """Executa auto-detecção e aplica o caminho encontrado.
+    """Runs auto-detection and applies the found path.
 
-    Retorna (encontrou: bool, caminho: str | None).
+    Returns (found: bool, path: str | None).
     """
     path = auto_detect_airllm_path()
     if path is None:
@@ -496,7 +496,7 @@ def auto_detect_and_apply() -> Tuple[bool, Optional[str]]:
     if ok:
         return True, resolved or path
 
-    # Mesmo sem confirmar resolução, testa import
+    # Even without confirming resolution, test import
     try:
         import airllm  # noqa: F401
         return True, path

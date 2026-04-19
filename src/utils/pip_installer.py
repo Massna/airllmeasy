@@ -1,8 +1,8 @@
-"""Instalador de pacotes pip com progresso em tempo real (QThread + sinais).
+"""Pip package installer with real-time progress (QThread + signals).
 
-Funciona tanto em execução normal (python main.py) quanto em executável
-empacotado com PyInstaller (.exe).  Quando rodando como .exe, detecta e
-usa o Python do sistema para invocar pip.
+Works both in normal execution (python main.py) and in a bundled
+executable created with PyInstaller (.exe). When running as .exe,
+detects and uses the system Python to invoke pip.
 """
 from __future__ import annotations
 
@@ -18,16 +18,16 @@ from PySide6.QtCore import QThread, Signal
 
 
 # ---------------------------------------------------------------------------
-# Detecção de Python quando rodando como .exe (PyInstaller)
+# Detecting Python when running as .exe (PyInstaller)
 # ---------------------------------------------------------------------------
 
 def is_frozen() -> bool:
-    """Retorna True se estamos rodando empacotado (PyInstaller, cx_Freeze, etc.)."""
+    """Returns True if running as a bundled package (PyInstaller, cx_Freeze, etc.)."""
     return getattr(sys, "frozen", False)
 
 
 def _find_python_in_path() -> Optional[str]:
-    """Procura python/python3 no PATH do sistema."""
+    """Searches for python/python3 in the system PATH."""
     for name in ("python", "python3"):
         found = shutil.which(name)
         if found:
@@ -36,10 +36,10 @@ def _find_python_in_path() -> Optional[str]:
 
 
 def _find_python_in_common_locations() -> Optional[str]:
-    """Tenta localizações comuns do Python no Windows."""
+    """Tries common Python installation locations on Windows."""
     candidates: List[Path] = []
 
-    # Locais usuais do Python no Windows
+    # Common Python locations on Windows
     local_app = os.environ.get("LOCALAPPDATA", "")
     if local_app:
         programs = Path(local_app) / "Programs" / "Python"
@@ -49,7 +49,7 @@ def _find_python_in_common_locations() -> Optional[str]:
                 if exe.is_file():
                     candidates.append(exe)
 
-    # py launcher do Windows
+    # Windows py launcher
     py = shutil.which("py")
     if py:
         candidates.append(Path(py))
@@ -77,23 +77,23 @@ def _find_python_in_common_locations() -> Optional[str]:
 
 
 def find_system_python() -> Tuple[Optional[str], Optional[str]]:
-    """Encontra o interpretador Python do sistema.
+    """Finds the system Python interpreter.
 
-    Retorna (caminho_python, site_packages_path) ou (None, erro).
+    Returns (python_path, site_packages_path) or (None, error_message).
     """
     if not is_frozen():
-        # Rodando como script normal — usa o mesmo Python
+        # Running as a normal script — use the same Python
         return sys.executable, None
 
-    # Frozen: procura Python no sistema
+    # Frozen: search for Python on the system
     python = _find_python_in_path() or _find_python_in_common_locations()
     if python is None:
         return None, (
-            "Python não encontrado no sistema.\n"
-            "Instale o Python em python.org e marque 'Add to PATH'."
+            "Python not found on the system.\n"
+            "Install Python from python.org and check 'Add to PATH'."
         )
 
-    # Descobre o site-packages desse Python
+    # Find the site-packages for this Python
     try:
         r = subprocess.run(
             [python, "-c", "import site; print(site.getsitepackages()[0])"],
@@ -107,19 +107,19 @@ def find_system_python() -> Tuple[Optional[str], Optional[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Worker de instalação
+# Installation worker
 # ---------------------------------------------------------------------------
 
 class PipInstallWorker(QThread):
-    """Executa ``pip install`` em background, emitindo progresso em tempo real.
+    """Runs ``pip install`` in background, emitting real-time progress.
 
-    Sinais:
-        progress_text  – texto de status ("Baixando airllm…", etc.)
-        progress_pct   – porcentagem estimada 0–100 (–1 quando indeterminada)
-        finished_ok    – emitido ao terminar: (sucesso: bool, mensagem: str)
-        site_packages  – quando rodando como .exe, emite o caminho do
-                         site-packages onde os pacotes foram instalados,
-                         para que o app possa adicioná-lo ao sys.path.
+    Signals:
+        progress_text  – status text ("Downloading airllm…", etc.)
+        progress_pct   – estimated percentage 0–100 (–1 when indeterminate)
+        finished_ok    – emitted on completion: (success: bool, message: str)
+        site_packages  – when running as .exe, emits the site-packages path
+                         where the packages were installed, so the app can
+                         add it to sys.path.
     """
 
     progress_text = Signal(str)
@@ -128,7 +128,7 @@ class PipInstallWorker(QThread):
     site_packages = Signal(str)
 
     # ---------------------------------------------------------------------------
-    # Regex para capturar progresso do pip
+    # Regex to capture pip progress
     # ---------------------------------------------------------------------------
     _RE_DOWNLOADING = re.compile(
         r"Downloading\s+(\S+?)[\s\-].*?\(([^)]+)\)", re.IGNORECASE
@@ -162,12 +162,12 @@ class PipInstallWorker(QThread):
         python, info = find_system_python()
 
         if python is None:
-            self.finished_ok.emit(False, info or "Python não encontrado.")
+            self.finished_ok.emit(False, info or "Python not found.")
             return
 
-        # Quando rodando como .exe, avisa qual Python está usando
+        # When running as .exe, report which Python is being used
         if is_frozen():
-            self.progress_text.emit(f"Usando Python do sistema: {python}")
+            self.progress_text.emit(f"Using system Python: {python}")
 
         cmd = [
             python,
@@ -179,7 +179,7 @@ class PipInstallWorker(QThread):
             *self.packages,
         ]
 
-        self.progress_text.emit(f"Iniciando instalação: {self.label}…")
+        self.progress_text.emit(f"Starting installation: {self.label}…")
         self.progress_pct.emit(-1)
 
         try:
@@ -193,7 +193,7 @@ class PipInstallWorker(QThread):
                 errors="replace",
             )
         except Exception as exc:
-            self.finished_ok.emit(False, f"Falha ao iniciar pip: {exc}")
+            self.finished_ok.emit(False, f"Failed to start pip: {exc}")
             return
 
         current_file = ""
@@ -202,25 +202,25 @@ class PipInstallWorker(QThread):
             for raw_line in iter(proc.stdout.readline, ""):
                 if self._cancelled:
                     proc.terminate()
-                    self.finished_ok.emit(False, "Instalação cancelada pelo usuário.")
+                    self.finished_ok.emit(False, "Installation cancelled by user.")
                     return
 
                 line = raw_line.strip()
                 if not line:
                     continue
 
-                # Detecta qual arquivo está sendo baixado
+                # Detect which file is being downloaded
                 m_dl = self._RE_DOWNLOADING.search(line)
                 if m_dl:
                     current_file = m_dl.group(1).split("/")[-1]
                     total_size = m_dl.group(2)
                     self.progress_text.emit(
-                        f"Baixando {current_file} ({total_size})…"
+                        f"Downloading {current_file} ({total_size})…"
                     )
                     self.progress_pct.emit(-1)
                     continue
 
-                # Barra de progresso do pip (━━━━)
+                # Pip progress bar (━━━━)
                 m_bar = self._RE_BAR.search(line)
                 if m_bar:
                     done = float(m_bar.group(1))
@@ -230,17 +230,17 @@ class PipInstallWorker(QThread):
                         pct = int(done / total * 100)
                         self.progress_pct.emit(min(pct, 100))
                         self.progress_text.emit(
-                            f"Baixando {current_file}: {done:.1f}/{total:.1f} {unit}"
+                            f"Downloading {current_file}: {done:.1f}/{total:.1f} {unit}"
                         )
                     continue
 
                 if self._RE_INSTALLING.search(line):
-                    self.progress_text.emit("Instalando pacotes…")
+                    self.progress_text.emit("Installing packages…")
                     self.progress_pct.emit(90)
                     continue
 
                 if self._RE_SUCCESS.search(line):
-                    self.progress_text.emit("Instalação concluída!")
+                    self.progress_text.emit("Installation complete!")
                     self.progress_pct.emit(100)
                     continue
 
@@ -248,15 +248,15 @@ class PipInstallWorker(QThread):
             ret = proc.wait()
 
         except Exception as exc:
-            self.finished_ok.emit(False, f"Erro durante instalação: {exc}")
+            self.finished_ok.emit(False, f"Error during installation: {exc}")
             return
 
         if ret == 0:
-            # Emite o site-packages para o app adicionar ao sys.path
+            # Emit the site-packages path for the app to add to sys.path
             if info:
                 self.site_packages.emit(info)
             else:
-                # Tenta descobrir o site-packages após instalar
+                # Try to discover site-packages after install
                 try:
                     r = subprocess.run(
                         [python, "-c", "import site; print(site.getsitepackages()[0])"],
@@ -267,9 +267,9 @@ class PipInstallWorker(QThread):
                 except Exception:
                     pass
 
-            self.finished_ok.emit(True, f"{self.label} instalado(s) com sucesso!")
+            self.finished_ok.emit(True, f"{self.label} installed successfully!")
         else:
             self.finished_ok.emit(
                 False,
-                f"pip retornou código {ret}. Verifique a conexão e permissões.",
+                f"pip returned code {ret}. Check your connection and permissions.",
             )

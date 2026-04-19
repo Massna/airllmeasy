@@ -1,4 +1,4 @@
-"""Ollama Backend - Opção A para download e gerenciamento de modelos."""
+"""Ollama Backend - Option A for downloading and managing models."""
 import requests
 import subprocess
 import platform
@@ -6,14 +6,14 @@ from typing import Optional, List, Dict, Callable
 
 
 class OllamaBackend:
-    """Interface com Ollama para download e gerenciamento de modelos."""
+    """Interface with Ollama for downloading and managing models."""
     
     def __init__(self, base_url: str = "http://localhost:11434"):
         self.base_url = base_url
         self.session = requests.Session()
     
     def is_running(self) -> bool:
-        """Verifica se o Ollama está rodando."""
+        """Checks if Ollama is running."""
         try:
             response = self.session.get(f"{self.base_url}/api/tags", timeout=5)
             return response.status_code == 200
@@ -21,7 +21,7 @@ class OllamaBackend:
             return False
     
     def start_ollama(self) -> bool:
-        """Tenta iniciar o Ollama."""
+        """Tries to start Ollama."""
         try:
             if platform.system() == "Windows":
                 subprocess.Popen(["ollama", "serve"], 
@@ -35,7 +35,7 @@ class OllamaBackend:
             return False
     
     def list_models(self) -> List[Dict]:
-        """Lista modelos instalados localmente."""
+        """Lists locally installed models."""
         try:
             response = self.session.get(f"{self.base_url}/api/tags", timeout=10)
             if response.status_code == 200:
@@ -47,7 +47,7 @@ class OllamaBackend:
     
     def pull_model(self, model_name: str, 
                    progress_callback: Optional[Callable[[str, float], None]] = None) -> bool:
-        """Baixa um modelo do registro Ollama."""
+        """Downloads a model from the Ollama registry."""
         try:
             response = self.session.post(
                 f"{self.base_url}/api/pull",
@@ -74,11 +74,11 @@ class OllamaBackend:
             
             return True
         except requests.exceptions.RequestException as e:
-            print(f"Erro ao baixar modelo: {e}")
+            print(f"Error downloading model: {e}")
             return False
     
     def delete_model(self, model_name: str) -> bool:
-        """Remove um modelo instalado."""
+        """Removes an installed model."""
         try:
             response = self.session.delete(
                 f"{self.base_url}/api/delete",
@@ -90,7 +90,7 @@ class OllamaBackend:
             return False
     
     def get_model_info(self, model_name: str) -> Optional[Dict]:
-        """Obtém informações de um modelo."""
+        """Gets information about a model."""
         try:
             response = self.session.post(
                 f"{self.base_url}/api/show",
@@ -105,7 +105,7 @@ class OllamaBackend:
     
     def chat(self, model_name: str, message: str, 
              stream_callback: Optional[Callable[[str], None]] = None) -> str:
-        """Envia mensagem para o modelo via Ollama."""
+        """Sends a message to the model via Ollama."""
         try:
             response = self.session.post(
                 f"{self.base_url}/api/generate",
@@ -130,11 +130,11 @@ class OllamaBackend:
             
             return full_response
         except requests.exceptions.RequestException as e:
-            return f"Erro: {e}"
+            return f"Error: {e}"
     
     @staticmethod
     def get_available_models() -> List[str]:
-        """Retorna lista de modelos populares disponíveis para download."""
+        """Returns a list of popular models available for download."""
         return [
             "llama3.2:1b",
             "llama3.2:3b",

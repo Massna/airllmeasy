@@ -1,4 +1,4 @@
-"""LMStudio Backend - Opção B para download e gerenciamento de modelos."""
+"""LMStudio Backend - Option B for downloading and managing models."""
 import requests
 import subprocess
 import platform
@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Callable
 
 
 class LMStudioBackend:
-    """Interface com LMStudio para download e gerenciamento de modelos."""
+    """Interface with LMStudio for downloading and managing models."""
     
     def __init__(self, base_url: str = "http://localhost:1234"):
         self.base_url = base_url
@@ -16,7 +16,7 @@ class LMStudioBackend:
         self._models_dir = self._get_models_directory()
     
     def _get_models_directory(self) -> Path:
-        """Obtém o diretório de modelos do LMStudio."""
+        """Gets the LMStudio models directory."""
         if platform.system() == "Windows":
             return Path(os.environ.get("USERPROFILE", "")) / ".cache" / "lm-studio" / "models"
         elif platform.system() == "Darwin":
@@ -25,7 +25,7 @@ class LMStudioBackend:
             return Path.home() / ".cache" / "lm-studio" / "models"
     
     def is_running(self) -> bool:
-        """Verifica se o LMStudio servidor está rodando."""
+        """Checks if the LMStudio server is running."""
         try:
             response = self.session.get(f"{self.base_url}/v1/models", timeout=5)
             return response.status_code == 200
@@ -33,12 +33,12 @@ class LMStudioBackend:
             return False
     
     def start_lmstudio(self) -> bool:
-        """Tenta iniciar o LMStudio (apenas notifica, usuário deve abrir manualmente)."""
-        # LMStudio precisa ser aberto manualmente pelo usuário
+        """Tries to start LMStudio (only notifies, user must open manually)."""
+        # LMStudio needs to be opened manually by the user
         return False
     
     def list_models(self) -> List[Dict]:
-        """Lista modelos disponíveis no servidor LMStudio."""
+        """Lists models available on the LMStudio server."""
         try:
             response = self.session.get(f"{self.base_url}/v1/models", timeout=10)
             if response.status_code == 200:
@@ -56,14 +56,14 @@ class LMStudioBackend:
             return []
     
     def list_local_models(self) -> List[Dict]:
-        """Lista modelos baixados localmente no diretório do LMStudio."""
+        """Lists locally downloaded models in the LMStudio directory."""
         models = []
         if self._models_dir.exists():
             for org_dir in self._models_dir.iterdir():
                 if org_dir.is_dir():
                     for model_dir in org_dir.iterdir():
                         if model_dir.is_dir():
-                            # Procura por arquivos GGUF
+                            # Search for GGUF files
                             gguf_files = list(model_dir.glob("*.gguf"))
                             for gguf in gguf_files:
                                 models.append({
@@ -75,14 +75,14 @@ class LMStudioBackend:
     
     def download_model_hf(self, repo_id: str, filename: str,
                           progress_callback: Optional[Callable[[str, float], None]] = None) -> bool:
-        """Baixa um modelo do HuggingFace para o diretório do LMStudio."""
+        """Downloads a model from HuggingFace to the LMStudio directory."""
         try:
             from huggingface_hub import hf_hub_download
             
             if progress_callback:
-                progress_callback(f"Baixando {filename}...", 0)
+                progress_callback(f"Downloading {filename}...", 0)
             
-            # Baixa para o diretório de modelos do LMStudio
+            # Download to the LMStudio models directory
             org_name = repo_id.split("/")[0] if "/" in repo_id else "models"
             model_name = repo_id.split("/")[1] if "/" in repo_id else repo_id
             
@@ -97,16 +97,16 @@ class LMStudioBackend:
             )
             
             if progress_callback:
-                progress_callback("Download completo!", 100)
+                progress_callback("Download complete!", 100)
             
             return True
         except Exception as e:
             if progress_callback:
-                progress_callback(f"Erro: {e}", -1)
+                progress_callback(f"Error: {e}", -1)
             return False
     
     def delete_model(self, model_path: str) -> bool:
-        """Remove um modelo instalado."""
+        """Removes an installed model."""
         try:
             path = Path(model_path)
             if path.exists():
@@ -118,7 +118,7 @@ class LMStudioBackend:
     
     def chat(self, model_name: str, message: str,
              stream_callback: Optional[Callable[[str], None]] = None) -> str:
-        """Envia mensagem para o modelo via LMStudio (API OpenAI compatível)."""
+        """Sends a message to the model via LMStudio (OpenAI compatible API)."""
         try:
             response = self.session.post(
                 f"{self.base_url}/v1/chat/completions",
@@ -153,11 +153,11 @@ class LMStudioBackend:
             
             return full_response
         except requests.exceptions.RequestException as e:
-            return f"Erro: {e}"
+            return f"Error: {e}"
     
     @staticmethod
     def get_popular_models() -> List[Dict[str, str]]:
-        """Retorna lista de modelos GGUF populares do HuggingFace."""
+        """Returns a list of popular GGUF models from HuggingFace."""
         return [
             {"repo": "TheBloke/Llama-2-7B-GGUF", "file": "llama-2-7b.Q4_K_M.gguf"},
             {"repo": "TheBloke/Llama-2-13B-GGUF", "file": "llama-2-13b.Q4_K_M.gguf"},

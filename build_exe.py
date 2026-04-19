@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Script para criar o executável da aplicação usando PyInstaller.
+Script to create the application executable using PyInstaller.
 
-Uso:
+Usage:
     python build_exe.py
     
-Ou diretamente com PyInstaller:
+Or directly with PyInstaller:
     pyinstaller --name="AI Local Manager" --windowed --onefile main.py
 """
 import subprocess
@@ -13,37 +13,37 @@ import sys
 import os
 
 def build():
-    """Constrói o executável."""
-    print("🔨 Construindo AI Local Manager...")
+    """Build the executable."""
+    print("🔨 Building AI Local Manager...")
     print("=" * 50)
     
-    # Garante que estamos no diretório correto
+    # Make sure we're in the correct directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     
-    # Comando PyInstaller
+    # PyInstaller command
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--name=AILocalManager",
-        "--windowed",  # Sem console
-        "--onefile",   # Um único arquivo
-        "--clean",     # Limpa cache
-        "--noconfirm", # Não pede confirmação
-        # Adiciona dados
+        "--windowed",  # No console
+        "--onefile",   # Single file
+        "--clean",     # Clean cache
+        "--noconfirm", # Don't ask for confirmation
+        # Add data
         "--add-data=src:src",
-        # Ícone (se existir)
+        # Icon (if exists)
         # "--icon=assets/icon.ico",
-        # Hidden imports necessários
+        # Required hidden imports
         "--hidden-import=PySide6.QtWidgets",
         "--hidden-import=PySide6.QtCore",
         "--hidden-import=PySide6.QtGui",
         "--hidden-import=requests",
         "--hidden-import=httpx",
-        # Arquivo principal
+        # Main file
         "main.py"
     ]
     
-    print(f"Executando: {' '.join(cmd)}")
+    print(f"Running: {' '.join(cmd)}")
     print()
     
     try:
@@ -51,20 +51,20 @@ def build():
         
         print()
         print("=" * 50)
-        print("✅ Build concluído com sucesso!")
+        print("✅ Build completed successfully!")
         print()
-        print("O executável está em: dist/AILocalManager.exe")
+        print("The executable is at: dist/AILocalManager.exe")
         print()
-        print("Notas:")
-        print("  - Certifique-se de que Ollama ou LMStudio estão instalados")
-        print("  - Para AirLLM, instale: pip install airllm torch")
+        print("Notes:")
+        print("  - Make sure Ollama or LMStudio are installed")
+        print("  - For AirLLM, install: pip install airllm torch")
         
     except subprocess.CalledProcessError as e:
-        print(f"❌ Erro no build: {e}")
+        print(f"❌ Build error: {e}")
         sys.exit(1)
     except FileNotFoundError:
-        print("❌ PyInstaller não encontrado!")
-        print("   Instale com: pip install pyinstaller")
+        print("❌ PyInstaller not found!")
+        print("   Install with: pip install pyinstaller")
         sys.exit(1)
 
 

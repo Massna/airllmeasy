@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-AI Local Manager - Aplicação para gerenciar e executar modelos de IA localmente.
+AI Local Manager - Application for managing and running AI models locally.
 
-Backends suportados:
-- Ollama (Opção A): Download e execução de modelos
-- LMStudio (Opção B): Download de GGUF e execução
-- AirLLM: Execução otimizada para pouca memória
+Supported backends:
+- Ollama (Option A): Download and run models
+- LMStudio (Option B): Download GGUF files and run
+- AirLLM: Memory-optimized execution
 """
 import sys
 import os
 
-# Adiciona o diretório src ao path
+# Add the src directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from PySide6.QtWidgets import QApplication
@@ -27,41 +27,41 @@ from src.utils.airllm_import import (
 
 
 def main():
-    """Função principal da aplicação."""
-    # Habilita High DPI
+    """Main application function."""
+    # Enable High DPI
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
     
-    # Cria aplicação
+    # Create application
     app = QApplication(sys.argv)
     app.setApplicationName("AI Local Manager")
     app.setOrganizationName("AILocalManager")
     app.setApplicationVersion("1.0.0")
     
-    # Fonte padrão
+    # Default font
     font = QFont("Segoe UI", 10)
     app.setFont(font)
     
-    # Carrega configurações
+    # Load settings
     config = Config()
     set_airllm_packages_path(config.airllm_packages_path)
 
-    # Auto-detecção: se airllm não é importável, tenta encontrar automaticamente
+    # Auto-detection: if airllm is not importable, try to find it automatically
     ok, _ = try_import_airllm()
     if not ok:
         found, detected_path = auto_detect_and_apply()
         if found and detected_path:
-            # Salva o caminho detectado para não precisar varrer novamente
+            # Save the detected path so we don't need to scan again
             config.airllm_packages_path = detected_path
             config.save()
-            print(f"[auto-detect] AirLLM encontrado em: {detected_path}")
+            print(f"[auto-detect] AirLLM found at: {detected_path}")
 
-    # Cria e mostra janela principal
+    # Create and show main window
     window = MainWindow(config)
     window.show()
     
-    # Executa loop de eventos
+    # Run event loop
     sys.exit(app.exec())
 
 

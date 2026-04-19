@@ -1,197 +1,197 @@
 # 🤖 AI Local Manager
 
-Aplicação desktop para gerenciar e executar modelos de IA localmente.
+Desktop application to manage and run AI models locally.
 
 ![Python](https://img.shields.io/badge/Python-3.9+-blue)
 ![PySide6](https://img.shields.io/badge/GUI-PySide6-green)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-## ✨ Funcionalidades
+## ✨ Features
 
-- **📥 Download de Modelos**: Suporte a Ollama e LMStudio
-- **💬 Chat com IA**: Converse com modelos locais
-- **🚀 AirLLM**: Execute modelos grandes com pouca memória
-- **⚙️ Configurável**: Alterne entre backends facilmente
-- **🎨 Interface Moderna**: Tema escuro elegante
+- **📥 Model Downloads**: Support for Ollama and LMStudio
+- **💬 AI Chat**: Chat with local models
+- **🚀 AirLLM**: Run large models with limited memory
+- **⚙️ Configurable**: Switch between backends easily
+- **🎨 Modern Interface**: Elegant dark theme
 
-## 🔧 Backends Suportados
+## 🔧 Supported Backends
 
-### Opção A - Ollama (Download)
-- Download direto do registro Ollama
-- Modelos: Llama, Mistral, CodeLlama, Phi, etc.
-- Pode executar diretamente OU carregar no AirLLM
+### Option A - Ollama (Download)
+- Direct download from the Ollama registry
+- Models: Llama, Mistral, CodeLlama, Phi, etc.
+- Can run directly OR load into AirLLM
 
-### Opção B - LMStudio (Download)
-- Download de arquivos GGUF do HuggingFace
-- Ótimo para modelos quantizados
-- Pode executar diretamente OU carregar no AirLLM
+### Option B - LMStudio (Download)
+- Download GGUF files from HuggingFace
+- Great for quantized models
+- Can run directly OR load into AirLLM
 
-### 🚀 AirLLM (Execução)
-- **Executa modelos baixados pelo Ollama ou LMStudio**
-- Suporta modelos GGUF (via llama-cpp-python)
-- Suporta modelos HuggingFace com compressão 4-bit/8-bit
-- Ideal para GPUs com pouca VRAM
+### 🚀 AirLLM (Execution)
+- **Runs models downloaded by Ollama or LMStudio**
+- Supports GGUF models (via llama-cpp-python)
+- Supports HuggingFace models with 4-bit/8-bit compression
+- Ideal for GPUs with limited VRAM
 
-## 📋 Fluxo de Trabalho
+## 📋 Workflow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    DOWNLOAD DE MODELOS                       │
+│                      MODEL DOWNLOAD                          │
 ├─────────────────────────────────────────────────────────────┤
-│  🅰️ Ollama          │  🅱️ LMStudio                          │
-│  - llama3.2         │  - Arquivos GGUF do HuggingFace       │
-│  - mistral          │  - TheBloke/Llama-2-7B-GGUF          │
-│  - codellama        │  - bartowski/gemma-2-2b-it-GGUF      │
+│  🅰️ Ollama           │  🅱️ LMStudio                         │
+│  - llama3.2          │  - GGUF files from HuggingFace       │
+│  - mistral           │  - TheBloke/Llama-2-7B-GGUF          │
+│  - codellama         │  - bartowski/gemma-2-2b-it-GGUF      │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    EXECUÇÃO DE MODELOS                       │
+│                      MODEL EXECUTION                         │
 ├─────────────────────────────────────────────────────────────┤
-│  🅰️ Ollama (nativo) │  🅱️ LMStudio (nativo)  │  🚀 AirLLM  │
-│  - Rápido           │  - API OpenAI          │  - GGUF     │
-│  - Otimizado        │  - Fácil de usar       │  - HuggingFace│
-│                     │                        │  - 4-bit/8-bit│
+│  🅰️ Ollama (native)  │  🅱️ LMStudio (native)  │  🚀 AirLLM │
+│  - Fast              │  - OpenAI API          │  - GGUF     │
+│  - Optimized         │  - Easy to use         │  - HuggingFace│
+│                      │                        │  - 4-bit/8-bit│
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📦 Instalação
+## 📦 Installation
 
-### Requisitos
+### Requirements
 - Python 3.9+
-- Ollama (opcional) - [ollama.ai](https://ollama.ai)
-- LMStudio (opcional) - [lmstudio.ai](https://lmstudio.ai)
+- Ollama (optional) - [ollama.ai](https://ollama.ai)
+- LMStudio (optional) - [lmstudio.ai](https://lmstudio.ai)
 
-### Instalar dependências
+### Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Executar aplicação
+### Run the application
 
 ```bash
 python main.py
 ```
 
-## 🏗️ Criar Executável (.exe)
+## 🏗️ Build Executable (.exe)
 
 ```bash
-# Instalar PyInstaller
+# Install PyInstaller
 pip install pyinstaller
 
-# Opção 1: Usar script
+# Option 1: Use the build script
 python build_exe.py
 
-# Opção 2: Usar spec file
+# Option 2: Use the spec file
 pyinstaller AILocalManager.spec
 
-# Opção 3: Comando direto
+# Option 3: Direct command
 pyinstaller --name="AILocalManager" --windowed --onefile main.py
 ```
 
-O executável será criado em `dist/AILocalManager.exe`
+The executable will be created at `dist/AILocalManager.exe`
 
-## 🚀 Uso
+## 🚀 Usage
 
-### 1. Configurar Backend
-- Vá em **Configurações**
-- Escolha **🅰️ Ollama** ou **🅱️ LMStudio**
-- Configure as URLs se necessário
+### 1. Configure Backend
+- Go to **Settings**
+- Choose **🅰️ Ollama** or **🅱️ LMStudio**
+- Configure URLs if needed
 
-### 2. Baixar Modelo
-- Vá em **Download de Modelos**
-- Selecione um modelo da lista
-- Clique em **⬇️ Baixar Modelo**
+### 2. Download a Model
+- Go to **Model Download**
+- Select a model from the list
+- Click **⬇️ Download Model**
 
-### 3. Conversar
-- Vá em **Chat**
-- Selecione o backend de execução
-- Escolha o modelo
-- Digite sua mensagem e envie!
+### 3. Chat
+- Go to **Chat**
+- Select the execution backend
+- Choose the model
+- Type your message and send!
 
-## 📁 Estrutura do Projeto
+## 📁 Project Structure
 
 ```
 ai-local-manager/
-├── main.py                 # Entrada principal
-├── requirements.txt        # Dependências
-├── build_exe.py           # Script de build
-├── AILocalManager.spec    # Configuração PyInstaller
+├── main.py                 # Main entry point
+├── requirements.txt        # Dependencies
+├── build_exe.py           # Build script
+├── AILocalManager.spec    # PyInstaller configuration
 ├── src/
 │   ├── ui/
-│   │   ├── main_window.py    # Janela principal
-│   │   ├── download_tab.py   # Aba de download
-│   │   ├── chat_tab.py       # Aba de chat
-│   │   └── settings_tab.py   # Aba de configurações
+│   │   ├── main_window.py    # Main window
+│   │   ├── download_tab.py   # Download tab
+│   │   ├── chat_tab.py       # Chat tab
+│   │   └── settings_tab.py   # Settings tab
 │   ├── backends/
-│   │   ├── ollama_backend.py   # Integração Ollama
-│   │   ├── lmstudio_backend.py # Integração LMStudio
-│   │   └── airllm_backend.py   # Integração AirLLM
+│   │   ├── ollama_backend.py   # Ollama integration
+│   │   ├── lmstudio_backend.py # LMStudio integration
+│   │   └── airllm_backend.py   # AirLLM integration
 │   └── utils/
-│       └── config.py          # Gerenciador de configurações
-└── assets/                # Recursos (ícones, etc.)
+│       └── config.py          # Configuration manager
+└── assets/                # Resources (icons, etc.)
 ```
 
-## ⚙️ Configuração
+## ⚙️ Configuration
 
-As configurações são salvas em:
+Settings are saved at:
 - **Windows**: `%APPDATA%/AILocalManager/config.json`
 - **Linux/Mac**: `~/.config/ailocalmanager/config.json`
 
-### Localizar o pacote AirLLM nos arquivos
+### Locating the AirLLM Package
 
-Se o aplicativo mostrar que o **AirLLM não está instalado** ou falhar ao importar o pacote, mesmo depois de `pip install airllm`, isso costuma acontecer quando o app roda com **outro Python** do que o que você usou no terminal (por exemplo, executável empacotado ou IDE apontando para outro interpretador).
+If the application shows that **AirLLM is not installed** or fails to import the package, even after `pip install airllm`, this usually happens when the app runs with a **different Python** than the one you used in the terminal (e.g., packaged executable or IDE pointing to another interpreter).
 
-1. Abra **Configurações** no app.
-2. Na seção **AirLLM**, use **Procurar…** e selecione uma destas pastas:
-   - A pasta **`site-packages`** do ambiente onde o `airllm` foi instalado, por exemplo:
+1. Open **Settings** in the app.
+2. In the **AirLLM** section, use **Browse…** and select one of these folders:
+   - The **`site-packages`** folder of the environment where `airllm` was installed, for example:
      - Windows: `...\venv\Lib\site-packages`
      - Linux/macOS: `.../lib/python3.x/site-packages`
-   - Ou a **raiz do ambiente virtual** (`venv`): o app tenta localizar `site-packages` automaticamente.
-3. Confirme se a linha de status abaixo do campo indica que foi encontrada uma subpasta **`airllm`**.
-4. Clique em **Salvar Configurações** e use **Verificar Requisitos do Sistema** para testar de novo.
+   - Or the **virtual environment root** (`venv`): the app tries to locate `site-packages` automatically.
+3. Confirm that the status line below the field indicates an **`airllm`** subfolder was found.
+4. Click **Save Settings** and use **Check System Requirements** to test again.
 
-**Como descobrir o caminho no terminal** (use o mesmo Python com que você pretende rodar o app):
+**How to find the path in the terminal** (use the same Python you intend to run the app with):
 
 ```bash
 pip show airllm
 ```
 
-O campo **Location** aponta para a pasta `site-packages` correta. Você também pode usar:
+The **Location** field points to the correct `site-packages` folder. You can also use:
 
 ```bash
 python -c "import site; print(site.getsitepackages())"
 ```
 
-A opção **Limpar** remove o caminho extra e volta a usar apenas o `sys.path` padrão do processo que executa o aplicativo.
+The **Clear** option removes the extra path and reverts to using only the default `sys.path` of the process running the application.
 
-**Instalação em modo editável** (`pip install -e caminho/do/repo`): o código do `airllm` pode não ficar como pasta dentro de `site-packages`, e sim em outro diretório referenciado por um arquivo **`.pth`** nessa pasta. O interpretador só lê `.pth` na subida do Python; este app passa a ler esses arquivos manualmente ao configurar o caminho. Por isso, mesmo com instalação `-e`, indique a pasta **`site-packages`** correta do ambiente — não basta apontar só para a pasta `airllm` do código-fonte, se o import depender do layout do pip.
+**Editable installation** (`pip install -e path/to/repo`): the `airllm` code may not be inside `site-packages` as a folder, but rather in another directory referenced by a **`.pth`** file in that folder. The interpreter only reads `.pth` files at Python startup; this app reads those files manually when configuring the path. Therefore, even with `-e` installation, point to the correct **`site-packages`** folder of the environment — it's not enough to point only to the `airllm` source code folder if the import depends on pip's layout.
 
-Se ainda falhar, use **Verificar Requisitos do Sistema**: a mensagem mostra o **erro exato** do `import` (dependência faltando, DLL, etc.), não só “não instalado”.
+If it still fails, use **Check System Requirements**: the message shows the **exact error** from `import` (missing dependency, DLL, etc.), not just "not installed".
 
-### Erro: `No module named 'optimum.bettertransformer'`
+### Error: `No module named 'optimum.bettertransformer'`
 
-Isso aparece quando o **optimum** instalado é a série **2.x**: o módulo `bettertransformer` foi removido, mas o **AirLLM** ainda depende dele. Não é falha do caminho nas configurações.
+This appears when the installed **optimum** is the **2.x** series: the `bettertransformer` module was removed, but **AirLLM** still depends on it. This is not a path configuration issue.
 
-No mesmo ambiente Python do app, instale versões compatíveis (como no `requirements.txt` do projeto):
+In the same Python environment as the app, install compatible versions (as in the project's `requirements.txt`):
 
 ```bash
 pip install "optimum>=1.17,<2" "transformers>=4.40,<4.49"
 ```
 
-Se já tiver versões novas demais, pode forçar:
+If you already have versions that are too new, you can force:
 
 ```bash
 pip install "optimum==1.17.0" "transformers==4.48.0"
 ```
 
-Depois execute de novo **Verificar Requisitos do Sistema**.
+Then run **Check System Requirements** again.
 
-## 🤝 Contribuição
+## 🤝 Contributing
 
-Contribuições são bem-vindas! Abra uma issue ou pull request.
+Contributions are welcome! Open an issue or pull request.
 
-## 📄 Licença
+## 📄 License
 
-MIT License - veja [LICENSE](LICENSE) para detalhes.
+MIT License - see [LICENSE](LICENSE) for details.

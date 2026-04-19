@@ -1,4 +1,4 @@
-"""AirLLM Backend - Para execução de modelos grandes com pouca memória."""
+"""AirLLM Backend - For running large models with limited memory."""
 import json
 import os
 import threading
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 def _append_lmstudio_roots_from_json(path: Path, roots: List[Path]) -> None:
-    """Lê caminhos de modelos no settings.json do LM Studio (pastas personalizadas)."""
+    """Reads model paths from LM Studio's settings.json (custom folders)."""
     try:
         data = json.loads(path.read_text(encoding="utf-8", errors="ignore"))
     except (OSError, json.JSONDecodeError):
@@ -39,7 +39,7 @@ def _append_lmstudio_roots_from_json(path: Path, roots: List[Path]) -> None:
 
 
 class AirLLMBackend:
-    """Interface com AirLLM para executar modelos grandes com memória limitada."""
+    """Interface with AirLLM for running large models with limited memory."""
     
     def __init__(self, config: Optional["Config"] = None):
         self.model = None
@@ -58,14 +58,14 @@ class AirLLMBackend:
         return url.rstrip("/")
     
     def _get_ollama_models_dir(self) -> Path:
-        """Diretório raiz de modelos do Ollama (manifests, blobs)."""
+        """Root directory for Ollama models (manifests, blobs)."""
         env = os.environ.get("OLLAMA_MODELS", "").strip()
         if env:
             return Path(env)
         return Path.home() / ".ollama" / "models"
     
     def _lmstudio_candidate_roots(self) -> List[Path]:
-        """Pastas onde o LM Studio costuma guardar GGUF (varia por versão)."""
+        """Folders where LM Studio typically stores GGUF files (varies by version)."""
         roots: List[Path] = []
         env = os.environ.get("LMSTUDIO_MODELS", "").strip()
         if env:
@@ -97,7 +97,7 @@ class AirLLMBackend:
         return unique
     
     def list_ollama_models(self) -> List[Dict]:
-        """Lista modelos Ollama. Preferimos a API (fiável); disco em fallback."""
+        """Lists Ollama models. Prefers the API (reliable); falls back to disk."""
         models: List[Dict] = []
         base = self._ollama_api_base()
         try:
@@ -135,7 +135,7 @@ class AirLLMBackend:
         return models
     
     def list_lmstudio_models(self) -> List[Dict]:
-        """Lista GGUFs em todas as pastas típicas do LM Studio."""
+        """Lists GGUF files in all typical LM Studio folders."""
         models: List[Dict] = []
         seen: set[str] = set()
         for root in self._lmstudio_candidate_roots():
@@ -178,21 +178,21 @@ class AirLLMBackend:
         return models
     
     def list_all_local_models(self) -> List[Dict]:
-        """Lista todos os modelos locais disponíveis para execução."""
+        """Lists all local models available for execution."""
         models = []
         models.extend(self.list_ollama_models())
         models.extend(self.list_lmstudio_models())
         return models
     
     def is_model_loaded(self) -> bool:
-        """Verifica se um modelo está carregado."""
+        """Checks if a model is loaded."""
         return self.model is not None
     
     def get_loaded_model_name(self) -> Optional[str]:
-        """Retorna o nome do modelo carregado."""
+        """Returns the name of the loaded model."""
         return self.model_name
     
-    # Constantes para sinalizar ao UI qual pacote está faltando
+    # Constants to signal the UI which package is missing
     MISSING_AIRLLM = "AIRLLM_NOT_INSTALLED"
     MISSING_LLAMACPP = "LLAMACPP_NOT_INSTALLED"
 
@@ -201,18 +201,18 @@ class AirLLMBackend:
                    compression: str = "4bit",
                    model_type: str = "huggingface") -> bool:
         """
-        Carrega um modelo usando AirLLM.
+        Loads a model using AirLLM.
         
         Args:
-            model_path: Caminho local ou ID do HuggingFace (ex: "meta-llama/Llama-2-7b-hf")
-            progress_callback: Callback para status de carregamento
-            compression: Tipo de compressão ("4bit", "8bit", ou "none")
-            model_type: Tipo do modelo ("huggingface", "gguf", "ollama")
+            model_path: Local path or HuggingFace ID (e.g., "meta-llama/Llama-2-7b-hf")
+            progress_callback: Callback for loading status
+            compression: Compression type ("4bit", "8bit", or "none")
+            model_type: Model type ("huggingface", "gguf", "ollama")
 
         Raises:
-            ImportError: Com message contendo MISSING_AIRLLM ou MISSING_LLAMACPP
-                         quando o pacote não está instalado. O chamador (UI) deve
-                         capturar essa exceção e oferecer instalação automática.
+            ImportError: With message containing MISSING_AIRLLM or MISSING_LLAMACPP
+                         when the package is not installed. The caller (UI) should
+                         catch this exception and offer automatic installation.
         """
         with self._lock:
             if self._loading:
@@ -223,7 +223,7 @@ class AirLLMBackend:
             # -- GGUF via llama-cpp-python ----------------------------------
             if model_type == "gguf":
                 if progress_callback:
-                    progress_callback("Carregando modelo GGUF com llama-cpp-python...")
+                    progress_callback("Loading GGUF model with llama-cpp-python...")
                 
                 try:
                     from llama_cpp import Llama  # noqa: F811
@@ -241,12 +241,12 @@ class AirLLMBackend:
                 self._model_type = "gguf"
                     
                 if progress_callback:
-                    progress_callback("Modelo GGUF carregado com sucesso!")
+                    progress_callback("GGUF model loaded successfully!")
                 return True
 
             # -- AirLLM / HuggingFace --------------------------------------
             if progress_callback:
-                progress_callback("Importando AirLLM...")
+                progress_callback("Importing AirLLM...")
 
             ensure_airllm_path()
             try:
@@ -255,20 +255,20 @@ class AirLLMBackend:
                 raise ImportError(self.MISSING_AIRLLM)
             
             if progress_callback:
-                progress_callback(f"Carregando modelo: {model_path}")
+                progress_callback(f"Loading model: {model_path}")
             
-            # Configurações de compressão
+            # Compression settings
             kwargs = {}
             if compression == "4bit":
                 kwargs["compression"] = "4bit"
             elif compression == "8bit":
                 kwargs["compression"] = "8bit"
             
-            # Para modelos Ollama, convertemos o nome para HuggingFace equivalente
+            # For Ollama models, convert the name to HuggingFace equivalent
             if model_type == "ollama":
                 if progress_callback:
-                    progress_callback(f"Convertendo modelo Ollama para HuggingFace: {model_path}")
-                # Mapeamento de modelos Ollama para HuggingFace
+                    progress_callback(f"Converting Ollama model to HuggingFace: {model_path}")
+                # Ollama to HuggingFace model mapping
                 ollama_to_hf = {
                     "llama3.2:1b": "meta-llama/Llama-3.2-1B",
                     "llama3.2:3b": "meta-llama/Llama-3.2-3B",
@@ -287,7 +287,7 @@ class AirLLMBackend:
                     "qwen2.5:7b": "Qwen/Qwen2.5-7B",
                     "qwen2.5:latest": "Qwen/Qwen2.5-7B",
                 }
-                # Nome exato (ex.: llama3.2:latest) ou primeiro:último segmento
+                # Exact name (e.g., llama3.2:latest) or first:last segment
                 base_model = model_path
                 if ":" in model_path:
                     parts = model_path.split(":")
@@ -295,9 +295,9 @@ class AirLLMBackend:
                         base_model = f"{parts[0]}:{parts[-1]}"
                 model_path = ollama_to_hf.get(model_path, ollama_to_hf.get(base_model, model_path))
                 if progress_callback:
-                    progress_callback(f"Usando modelo HuggingFace: {model_path}")
+                    progress_callback(f"Using HuggingFace model: {model_path}")
             
-            # Carrega o modelo HuggingFace com AirLLM
+            # Load the HuggingFace model with AirLLM
             self.model = AutoModel.from_pretrained(
                 model_path,
                 **kwargs
@@ -307,30 +307,30 @@ class AirLLMBackend:
             self._model_type = "airllm"
             
             if progress_callback:
-                progress_callback("Modelo carregado com sucesso!")
+                progress_callback("Model loaded successfully!")
             
             return True
             
         except ImportError:
-            # Repassa ImportError com markers para o chamador (UI)
+            # Re-raise ImportError with markers for the caller (UI)
             raise
         except Exception as e:
             if progress_callback:
-                progress_callback(f"Erro ao carregar modelo: {e}")
+                progress_callback(f"Error loading model: {e}")
             return False
         finally:
             with self._lock:
                 self._loading = False
     
     def unload_model(self) -> bool:
-        """Descarrega o modelo da memória."""
+        """Unloads the model from memory."""
         try:
             if self.model is not None:
                 del self.model
                 self.model = None
                 self.model_name = None
                 
-                # Limpa cache
+                # Clear cache
                 import gc
                 gc.collect()
                 
@@ -351,20 +351,20 @@ class AirLLMBackend:
                  top_p: float = 0.9,
                  stream_callback: Optional[Callable[[str], None]] = None) -> str:
         """
-        Gera texto usando o modelo carregado.
+        Generates text using the loaded model.
         
         Args:
-            prompt: Texto de entrada
-            max_new_tokens: Máximo de tokens a gerar
-            temperature: Temperatura para sampling
+            prompt: Input text
+            max_new_tokens: Maximum tokens to generate
+            temperature: Temperature for sampling
             top_p: Top-p (nucleus) sampling
-            stream_callback: Callback para tokens gerados (streaming)
+            stream_callback: Callback for generated tokens (streaming)
         """
         if not self.is_model_loaded():
-            return "Erro: Nenhum modelo carregado"
+            return "Error: No model loaded"
         
         try:
-            # Para modelos GGUF (llama-cpp)
+            # For GGUF models (llama-cpp)
             if hasattr(self, '_model_type') and self._model_type == "gguf":
                 response = ""
                 for token in self.model(
@@ -380,14 +380,14 @@ class AirLLMBackend:
                         stream_callback(text)
                 return response
             
-            # Para modelos AirLLM (HuggingFace)
-            # Tokeniza o prompt
+            # For AirLLM models (HuggingFace)
+            # Tokenize the prompt
             input_ids = self.model.tokenizer(
                 prompt, 
                 return_tensors="pt"
             ).input_ids
             
-            # Gera a resposta
+            # Generate the response
             generation_output = self.model.generate(
                 input_ids=input_ids,
                 max_new_tokens=max_new_tokens,
@@ -397,7 +397,7 @@ class AirLLMBackend:
                 return_dict_in_generate=True
             )
             
-            # Decodifica a saída
+            # Decode the output
             output_ids = generation_output.sequences[0]
             response = self.model.tokenizer.decode(
                 output_ids[len(input_ids[0]):], 
@@ -405,29 +405,29 @@ class AirLLMBackend:
             )
             
             if stream_callback:
-                # Simula streaming (AirLLM não suporta streaming nativo)
+                # Simulate streaming (AirLLM doesn't support native streaming)
                 for char in response:
                     stream_callback(char)
             
             return response
             
         except Exception as e:
-            return f"Erro na geração: {e}"
+            return f"Generation error: {e}"
     
     def chat(self, message: str, 
-             system_prompt: str = "Você é um assistente útil.",
+             system_prompt: str = "You are a helpful assistant.",
              max_new_tokens: int = 256,
              stream_callback: Optional[Callable[[str], None]] = None) -> str:
         """
-        Interface de chat simplificada.
+        Simplified chat interface.
         
         Args:
-            message: Mensagem do usuário
-            system_prompt: Prompt de sistema
-            max_new_tokens: Máximo de tokens
-            stream_callback: Callback para streaming
+            message: User message
+            system_prompt: System prompt
+            max_new_tokens: Maximum tokens
+            stream_callback: Callback for streaming
         """
-        # Formata como chat
+        # Format as chat
         full_prompt = f"""### System:
 {system_prompt}
 
@@ -444,26 +444,26 @@ class AirLLMBackend:
     
     @staticmethod
     def get_supported_models() -> list:
-        """Retorna lista de modelos recomendados para usar com AirLLM."""
+        """Returns a list of recommended models for use with AirLLM."""
         return [
             {
                 "name": "meta-llama/Llama-2-7b-hf",
-                "description": "Llama 2 7B - Bom equilíbrio",
+                "description": "Llama 2 7B - Good balance",
                 "size": "~13GB"
             },
             {
                 "name": "meta-llama/Llama-2-13b-hf", 
-                "description": "Llama 2 13B - Maior qualidade",
+                "description": "Llama 2 13B - Higher quality",
                 "size": "~26GB"
             },
             {
                 "name": "mistralai/Mistral-7B-v0.1",
-                "description": "Mistral 7B - Rápido e eficiente",
+                "description": "Mistral 7B - Fast and efficient",
                 "size": "~14GB"
             },
             {
                 "name": "microsoft/phi-2",
-                "description": "Phi-2 - Pequeno mas poderoso",
+                "description": "Phi-2 - Small but powerful",
                 "size": "~5GB"
             },
             {
@@ -473,14 +473,14 @@ class AirLLMBackend:
             },
             {
                 "name": "google/gemma-2-2b",
-                "description": "Gemma 2 2B - Compacto",
+                "description": "Gemma 2 2B - Compact",
                 "size": "~4GB"
             },
         ]
     
     @staticmethod
     def check_requirements() -> dict:
-        """Verifica requisitos do sistema para AirLLM."""
+        """Checks system requirements for AirLLM."""
         result = {
             "airllm_installed": False,
             "airllm_import_error": None,
