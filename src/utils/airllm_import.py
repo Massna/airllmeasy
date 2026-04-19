@@ -1,12 +1,22 @@
-"""Ajusta sys.path para localizar o pacote Python airllm (incl. instalações editáveis via .pth)."""
+"""Ajusta sys.path para localizar o pacote Python airllm (incl. instalações editáveis via .pth).
+
+Inclui auto-detecção automática que varre Python(s) do sistema, venvs, e
+caminhos comuns para encontrar o pacote airllm sem intervenção do usuário.
+"""
 from __future__ import annotations
 
 import glob
 import importlib
+import logging
+import os
 import platform
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+_log = logging.getLogger(__name__)
 
 _last_inserted_paths: List[str] = []
 _configured_packages_path: Optional[str] = None
@@ -255,3 +265,242 @@ def try_import_airllm() -> Tuple[bool, Optional[str]]:
         return False, str(e)
     except Exception as e:
         return False, f"{type(e).__name__}: {e}"
+
+
+# ---------------------------------------------------------------------------
+# Auto-detecção do pacote airllm
+# ---------------------------------------------------------------------------
+
+def _find_all_python_executables() -> List[str]:
+    """Descobre todos os interpretadores Python disponíveis no sistema."""
+    found: List[str] = []
+    seen: set[str] = set()
+
+    def _add(path: Optional[str]) -> None:
+        if path is None:
+            return
+        try:
+            resolved = str(Path(path).resolve())
+        except OSError:
+            return
+        if resolved not in seen:
+            seen.add(resolved)
+            found.append(path)
+
+    # 1) O próprio interpretador atual
+    _add(sys.executable)
+
+    # 2) python / python3 no PATH
+    for name in ("python", "python3"):
+        _add(shutil.which(name))
+
+    # 3) py launcher (Windows)
+    if platform.system() == "Windows":
+        py = shutil.which("py")
+        if py:
+            _add(py)
+            # py -0p lista todas as versões instaladas
+            try:
+                r = subprocess.run(
+                    [py, "-0p"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                if r.returncode == 0:
+                    for line in r.stdout.splitlines():
+                        # Formato: " -3.12-64  C:\Python312\python.exe"
+                        parts = line.strip().split()
+                        if len(parts) >= 2:
+                            candidate = parts[-1].strip("*")
+                            if Path(candidate).is_file():
+                                _add(candidate)
+            except Exception:
+                pass
+
+        # 4) Locais comuns do Python no Windows
+        local_app = os.environ.get("LOCALAPPDATA", "")
+        if local_app:
+            programs = Path(local_app) / "Programs" / "Python"
+            if programs.is_dir():
+                for sub in sorted(programs.iterdir(), reverse=True):
+                    exe = sub / "python.exe"
+                    if exe.is_file():
+                        _add(str(exe))
+
+        # WindowsApps (Microsoft Store)
+        if local_app:
+            wapps = Path(local_app) / "Microsoft" / "WindowsApps"
+            for name in ("python3.exe", "python.exe"):
+                p = wapps / name
+                if p.is_file():
+                    _add(str(p))
+
+    # 5) Conda envs
+    for env_var in ("CONDA_PREFIX", "CONDA_EXE"):
+        val = os.environ.get(env_var, "").strip()
+        if not val:
+            continue
+        conda_root = Path(val)
+        # CONDA_EXE aponta para o executável, subir até a raiz
+        if conda_root.is_file():
+            conda_root = conda_root.parent.parent
+        envs_dir = conda_root / "envs"
+        if envs_dir.is_dir():
+            try:
+                for env_dir in envs_dir.iterdir():
+                    if not env_dir.is_dir():
+                        continue
+                    if platform.system() == "Windows":
+                        exe = env_dir / "python.exe"
+                    else:
+                        exe = env_dir / "bin" / "python"
+                    if exe.is_file():
+                        _add(str(exe))
+            except OSError:
+                pass
+
+    return found
+
+
+def _pip_show_airllm(python_exe: str) -> Optional[Path]:
+    """Executa 'pip show airllm' com o Python dado e retorna o Location."""
+    try:
+        r = subprocess.run(
+            [python_exe, "-m", "pip", "show", "airllm"],
+            capture_output=True, text=True, timeout=15,
+            encoding="utf-8", errors="replace",
+        )
+        if r.returncode != 0:
+            return None
+        for line in r.stdout.splitlines():
+            if line.lower().startswith("location:"):
+                loc = line.split(":", 1)[1].strip()
+                p = Path(loc)
+                if p.is_dir() and _has_airllm_package(p):
+                    return p
+    except Exception:
+        pass
+    return None
+
+
+def _scan_common_venv_locations() -> List[Path]:
+    """Retorna site-packages de venvs em locais comuns perto do projeto."""
+    candidates: List[Path] = []
+    home = Path.home()
+
+    # Locais onde desenvolvedores costumam criar venvs
+    venv_names = ("venv", ".venv", "env", ".env", "airllm-env", "airllm_env")
+
+    # Perto do executável / script
+    base_dirs: List[Path] = []
+    try:
+        base_dirs.append(Path(sys.executable).resolve().parent)
+    except Exception:
+        pass
+    try:
+        base_dirs.append(Path(__file__).resolve().parent.parent.parent)  # raiz do projeto
+    except Exception:
+        pass
+    base_dirs.append(Path.cwd())
+    base_dirs.append(home)
+
+    seen: set[str] = set()
+    for base in base_dirs:
+        for vname in venv_names:
+            venv_root = base / vname
+            if not venv_root.is_dir():
+                continue
+            if platform.system() == "Windows":
+                sp = venv_root / "Lib" / "site-packages"
+            else:
+                # lib/python3.X/site-packages
+                for sp_candidate in venv_root.glob("lib/python*/site-packages"):
+                    sp = sp_candidate
+                    break
+                else:
+                    continue
+            if sp.is_dir():
+                key = str(sp.resolve())
+                if key not in seen:
+                    seen.add(key)
+                    candidates.append(sp)
+
+    return candidates
+
+
+def auto_detect_airllm_path() -> Optional[str]:
+    """Tenta encontrar automaticamente onde o pacote airllm está instalado.
+
+    Estratégias (em ordem de prioridade):
+      1. Import direto (já está no sys.path)
+      2. ``pip show airllm`` em cada Python encontrado no sistema
+      3. Varredura de venvs em locais comuns
+      4. Varredura de site-packages do(s) Python(s) encontrados
+
+    Retorna o caminho da pasta que deve ser adicionada ao sys.path
+    (geralmente o site-packages), ou None se não encontrou.
+    """
+    # 1) Já importável?
+    try:
+        import airllm  # noqa: F401
+        # Já funciona — retorna o diretório pai do pacote
+        pkg_dir = Path(airllm.__file__).resolve().parent.parent
+        _log.info("auto_detect: airllm já importável em %s", pkg_dir)
+        return str(pkg_dir)
+    except Exception:
+        pass
+
+    # 2) pip show em cada Python
+    pythons = _find_all_python_executables()
+    for py in pythons:
+        loc = _pip_show_airllm(py)
+        if loc is not None:
+            _log.info("auto_detect: pip show encontrou airllm em %s (via %s)", loc, py)
+            return str(loc)
+
+    # 3) Venvs em locais comuns
+    for sp in _scan_common_venv_locations():
+        if _has_airllm_package(sp):
+            _log.info("auto_detect: airllm encontrado em venv %s", sp)
+            return str(sp)
+
+    # 4) site-packages de cada Python encontrado
+    for py in pythons:
+        try:
+            r = subprocess.run(
+                [py, "-c", "import site; print('\\n'.join(site.getsitepackages()))"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if r.returncode == 0:
+                for line in r.stdout.splitlines():
+                    sp = Path(line.strip())
+                    if sp.is_dir() and _has_airllm_package(sp):
+                        _log.info("auto_detect: airllm em site-packages %s (via %s)", sp, py)
+                        return str(sp)
+        except Exception:
+            continue
+
+    _log.info("auto_detect: airllm não encontrado em nenhum local")
+    return None
+
+
+def auto_detect_and_apply() -> Tuple[bool, Optional[str]]:
+    """Executa auto-detecção e aplica o caminho encontrado.
+
+    Retorna (encontrou: bool, caminho: str | None).
+    """
+    path = auto_detect_airllm_path()
+    if path is None:
+        return False, None
+
+    ok, resolved = apply_airllm_packages_path(path)
+    if ok:
+        return True, resolved or path
+
+    # Mesmo sem confirmar resolução, testa import
+    try:
+        import airllm  # noqa: F401
+        return True, path
+    except Exception:
+        pass
+
+    return False, None

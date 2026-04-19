@@ -19,7 +19,11 @@ from PySide6.QtGui import QFont
 
 from src.ui.main_window import MainWindow
 from src.utils.config import Config
-from src.utils.airllm_import import set_airllm_packages_path
+from src.utils.airllm_import import (
+    set_airllm_packages_path,
+    try_import_airllm,
+    auto_detect_and_apply,
+)
 
 
 def main():
@@ -42,6 +46,16 @@ def main():
     # Carrega configurações
     config = Config()
     set_airllm_packages_path(config.airllm_packages_path)
+
+    # Auto-detecção: se airllm não é importável, tenta encontrar automaticamente
+    ok, _ = try_import_airllm()
+    if not ok:
+        found, detected_path = auto_detect_and_apply()
+        if found and detected_path:
+            # Salva o caminho detectado para não precisar varrer novamente
+            config.airllm_packages_path = detected_path
+            config.save()
+            print(f"[auto-detect] AirLLM encontrado em: {detected_path}")
 
     # Cria e mostra janela principal
     window = MainWindow(config)

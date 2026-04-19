@@ -8,7 +8,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 
 from ..utils.config import Config
-from ..utils.airllm_import import set_airllm_packages_path, resolve_airllm_site_packages
+from ..utils.airllm_import import (
+    set_airllm_packages_path,
+    resolve_airllm_site_packages,
+    auto_detect_airllm_path,
+)
 from ..backends.airllm_backend import AirLLMBackend
 from .install_dialog import prompt_install_airllm
 
@@ -105,6 +109,27 @@ class SettingsTab(QWidget):
         self.airllm_browse_btn.setToolTip("Selecionar pasta no disco")
         self.airllm_browse_btn.clicked.connect(self._browse_airllm_folder)
         path_row.addWidget(self.airllm_browse_btn)
+
+        self.airllm_autodetect_btn = QPushButton("🔎 Auto-detectar")
+        self.airllm_autodetect_btn.setToolTip(
+            "Varre todos os Python/venvs do sistema procurando o pacote airllm"
+        )
+        self.airllm_autodetect_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #89b4fa;
+                color: #1e1e2e;
+                font-weight: bold;
+                padding: 6px 14px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #74c7ec; }
+            QPushButton:disabled {
+                background-color: #45475a;
+                color: #6c7086;
+            }
+        """)
+        self.airllm_autodetect_btn.clicked.connect(self._auto_detect_airllm)
+        path_row.addWidget(self.airllm_autodetect_btn)
 
         self.airllm_clear_path_btn = QPushButton("Limpar")
         self.airllm_clear_path_btn.setToolTip("Remover caminho personalizado")
@@ -339,6 +364,37 @@ class SettingsTab(QWidget):
                 "Se usou pip install -e, escolha o mesmo site-packages (o app lê arquivos .pth)."
             )
 
+    def _auto_detect_airllm(self):
+        """Varre o sistema procurando o pacote airllm e preenche o campo."""
+        self.airllm_autodetect_btn.setEnabled(False)
+        self.airllm_autodetect_btn.setText("🔎 Procurando…")
+        # Força repaint antes da operação (pode demorar alguns segundos)
+        from PySide6.QtWidgets import QApplication as _QApp
+        _QApp.processEvents()
+
+        detected = auto_detect_airllm_path()
+
+        self.airllm_autodetect_btn.setEnabled(True)
+        self.airllm_autodetect_btn.setText("🔎 Auto-detectar")
+
+        if detected:
+            self.airllm_path_input.setText(detected)
+            self._update_airllm_path_hint()
+            QMessageBox.information(
+                self, "AirLLM Encontrado",
+                f"Pacote airllm detectado em:\n{detected}\n\n"
+                "Clique em 'Salvar Configurações' para persistir.",
+            )
+        else:
+            QMessageBox.warning(
+                self, "Não Encontrado",
+                "Não foi possível localizar o pacote airllm em nenhum "
+                "Python/venv do sistema.\n\n"
+                "Você pode:\n"
+                "• Instalar com o botão '⬇️ Instalar AirLLM'\n"
+                "• Indicar manualmente a pasta site-packages com '📁 Procurar…'",
+            )
+
     def _install_airllm_clicked(self):
         """Abre diálogo de instalação do AirLLM com barra de progresso."""
         if prompt_install_airllm(parent=self):
@@ -355,21 +411,35 @@ class SettingsTab(QWidget):
             status_parts.append("✅ AirLLM instalado")
             self.install_airllm_btn.setVisible(False)
         else:
-            status_parts.append("❌ Não foi possível importar o pacote airllm")
-            self.install_airllm_btn.setVisible(True)
-            err = requirements.get("airllm_import_error")
-            if err:
-                status_parts.append(f"   Erro: {err}")
-                el = err.lower()
-                if "optimum" in el and "bettertransformer" in el:
-                    status_parts.append(
-                        "   → O optimum 2.x removeu esse módulo. No terminal: "
-                        "pip install \"optimum>=1.17,<2\" \"transformers>=4.40,<4.49\""
-                    )
+            # Tenta auto-detecção antes de declarar "não instalado"
+            detected = auto_detect_airllm_path()
+            if detected:
+                from ..utils.airllm_import import set_airllm_packages_path as _set_path
+                _set_path(detected)
+                self.airllm_path_input.setText(detected)
+                self._update_airllm_path_hint()
+                # Re-verifica após aplicar o caminho
+                requirements = AirLLMBackend.check_requirements()
+
+            if requirements["airllm_installed"]:
+                status_parts.append("✅ AirLLM instalado (detectado automaticamente)")
+                self.install_airllm_btn.setVisible(False)
             else:
-                status_parts.append(
-                    '   Dica: clique em "⬇️ Instalar AirLLM" ou rode pip install airllm no terminal.'
-                )
+                status_parts.append("❌ Não foi possível importar o pacote airllm")
+                self.install_airllm_btn.setVisible(True)
+                err = requirements.get("airllm_import_error")
+                if err:
+                    status_parts.append(f"   Erro: {err}")
+                    el = err.lower()
+                    if "optimum" in el and "bettertransformer" in el:
+                        status_parts.append(
+                            "   → O optimum 2.x removeu esse módulo. No terminal: "
+                            'pip install "optimum>=1.17,<2" "transformers>=4.40,<4.49"'
+                        )
+                else:
+                    status_parts.append(
+                        '   Dica: clique em "⬇️ Instalar AirLLM" ou use "🔎 Auto-detectar".'
+                    )
         
         if requirements["torch_installed"]:
             status_parts.append("✅ PyTorch instalado")
