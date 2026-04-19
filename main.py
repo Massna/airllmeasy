@@ -19,6 +19,7 @@ from PySide6.QtGui import QFont
 
 from src.ui.main_window import MainWindow
 from src.utils.config import Config
+from src.utils.airllm_import import set_airllm_packages_path
 
 
 def main():
@@ -40,7 +41,8 @@ def main():
     
     # Carrega configurações
     config = Config()
-    
+    set_airllm_packages_path(config.airllm_packages_path)
+
     # Cria e mostra janela principal
     window = MainWindow(config)
     window.show()

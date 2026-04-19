@@ -6,6 +6,8 @@ import platform
 from typing import Optional, Callable, Generator, List, Dict
 from pathlib import Path
 
+from ..utils.airllm_import import ensure_airllm_path
+
 
 class AirLLMBackend:
     """Interface com AirLLM para executar modelos grandes com memória limitada."""
@@ -110,7 +112,8 @@ class AirLLMBackend:
         try:
             if progress_callback:
                 progress_callback("Importando AirLLM...")
-            
+
+            ensure_airllm_path()
             from airllm import AutoModel
             
             if progress_callback:
@@ -379,7 +382,8 @@ class AirLLMBackend:
             "gpu_name": None,
             "gpu_memory": None
         }
-        
+
+        ensure_airllm_path()
         try:
             import airllm
             result["airllm_installed"] = True

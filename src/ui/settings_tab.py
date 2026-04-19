@@ -2,11 +2,13 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QGroupBox, QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox,
-    QRadioButton, QButtonGroup, QFrame, QMessageBox, QCheckBox
+    QRadioButton, QButtonGroup, QFrame, QMessageBox,
+    QFileDialog,
 )
 from PySide6.QtCore import Qt, Signal
 
 from ..utils.config import Config
+from ..utils.airllm_import import set_airllm_packages_path, resolve_airllm_site_packages
 from ..backends.airllm_backend import AirLLMBackend
 
 
@@ -78,6 +80,42 @@ class SettingsTab(QWidget):
         
         compression_layout.addStretch()
         airllm_layout.addLayout(compression_layout)
+
+        # Caminho manual do pacote airllm (site-packages)
+        path_help = QLabel(
+            "Se o app não encontra o AirLLM (import), indique a pasta onde o pip instalou o pacote: "
+            "normalmente a pasta site-packages do mesmo Python/venv em que você rodou pip install airllm. "
+            "Também pode escolher a raiz do ambiente virtual."
+        )
+        path_help.setWordWrap(True)
+        path_help.setOpenExternalLinks(False)
+        airllm_layout.addWidget(path_help)
+
+        path_row = QHBoxLayout()
+        path_row.addWidget(QLabel("Pasta do AirLLM:"))
+        self.airllm_path_input = QLineEdit()
+        self.airllm_path_input.setPlaceholderText(
+            "Ex.: C:\\…\\venv\\Lib\\site-packages ou pasta do venv"
+        )
+        self.airllm_path_input.textChanged.connect(self._update_airllm_path_hint)
+        path_row.addWidget(self.airllm_path_input, stretch=1)
+
+        self.airllm_browse_btn = QPushButton("📁 Procurar…")
+        self.airllm_browse_btn.setToolTip("Selecionar pasta no disco")
+        self.airllm_browse_btn.clicked.connect(self._browse_airllm_folder)
+        path_row.addWidget(self.airllm_browse_btn)
+
+        self.airllm_clear_path_btn = QPushButton("Limpar")
+        self.airllm_clear_path_btn.setToolTip("Remover caminho personalizado")
+        self.airllm_clear_path_btn.clicked.connect(self._clear_airllm_path)
+        path_row.addWidget(self.airllm_clear_path_btn)
+
+        airllm_layout.addLayout(path_row)
+
+        self.airllm_path_hint = QLabel()
+        self.airllm_path_hint.setWordWrap(True)
+        self.airllm_path_hint.setStyleSheet("color: #89b4fa; font-size: 11px;")
+        airllm_layout.addWidget(self.airllm_path_hint)
         
         # Status do sistema
         self.system_status_btn = QPushButton("🔍 Verificar Requisitos do Sistema")
@@ -170,6 +208,10 @@ class SettingsTab(QWidget):
         index = self.compression_combo.findData(compression)
         if index >= 0:
             self.compression_combo.setCurrentIndex(index)
+
+        ap = self.config.airllm_packages_path
+        self.airllm_path_input.setText(ap or "")
+        self._update_airllm_path_hint()
         
         # Parâmetros
         self.max_tokens_spin.setValue(self.config.max_tokens)
@@ -195,6 +237,9 @@ class SettingsTab(QWidget):
         
         # Compressão AirLLM
         self.config.airllm_compression = self.compression_combo.currentData()
+
+        self.config.airllm_packages_path = self.airllm_path_input.text().strip() or None
+        ok, resolved = set_airllm_packages_path(self.config.airllm_packages_path)
         
         # Parâmetros
         self.config.max_tokens = self.max_tokens_spin.value()
@@ -205,10 +250,14 @@ class SettingsTab(QWidget):
         
         # Salva
         if self.config.save():
-            QMessageBox.information(
-                self, "Sucesso",
-                "Configurações salvas com sucesso!"
-            )
+            self._update_airllm_path_hint()
+            msg = "Configurações salvas com sucesso!"
+            if self.config.airllm_packages_path and not ok:
+                msg += (
+                    "\n\nAviso: não foi possível confirmar o pacote airllm nesse caminho. "
+                    "Confira se a pasta é a site-packages correta (deve existir uma subpasta airllm)."
+                )
+            QMessageBox.information(self, "Sucesso", msg)
             self.settings_changed.emit()
         else:
             QMessageBox.warning(
@@ -227,11 +276,41 @@ class SettingsTab(QWidget):
         if reply == QMessageBox.Yes:
             self.config.reset()
             self._load_settings()
+            set_airllm_packages_path(self.config.airllm_packages_path)
             QMessageBox.information(
                 self, "Sucesso",
                 "Configurações restauradas!"
             )
     
+    def _browse_airllm_folder(self):
+        """Abre seletor de pasta para o site-packages / venv do AirLLM."""
+        start = self.airllm_path_input.text().strip() or None
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Selecione a pasta site-packages ou a raiz do ambiente virtual",
+            start or "",
+        )
+        if folder:
+            self.airllm_path_input.setText(folder)
+            self._update_airllm_path_hint()
+
+    def _clear_airllm_path(self):
+        self.airllm_path_input.clear()
+        self._update_airllm_path_hint()
+
+    def _update_airllm_path_hint(self):
+        text = self.airllm_path_input.text().strip()
+        if not text:
+            self.airllm_path_hint.setText("Nenhum caminho extra: usa apenas o Python que executa o app.")
+            return
+        resolved = resolve_airllm_site_packages(text)
+        if resolved:
+            self.airllm_path_hint.setText(f"Pasta usada para import: {resolved}")
+        else:
+            self.airllm_path_hint.setText(
+                "Não foi encontrada uma subpasta airllm aqui. Verifique o caminho ou use a pasta site-packages."
+            )
+
     def _check_system_requirements(self):
         """Verifica requisitos do sistema para AirLLM."""
         requirements = AirLLMBackend.check_requirements()

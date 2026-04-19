@@ -18,6 +18,7 @@ class Config:
         "max_tokens": 512,
         "temperature": 0.7,
         "airllm_compression": "4bit",  # "4bit", "8bit", "none"
+        "airllm_packages_path": None,  # site-packages onde está o pacote airllm (opcional)
         "last_model": None,
         "window_geometry": None,
     }
@@ -130,3 +131,19 @@ class Config:
     def airllm_compression(self, value: str) -> None:
         if value in ("4bit", "8bit", "none"):
             self._config["airllm_compression"] = value
+
+    @property
+    def airllm_packages_path(self) -> Optional[str]:
+        """Pasta site-packages (ou raiz do venv) onde o pip instalou o pacote airllm."""
+        v = self._config.get("airllm_packages_path")
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s if s else None
+
+    @airllm_packages_path.setter
+    def airllm_packages_path(self, value: Optional[str]) -> None:
+        if value is None or not str(value).strip():
+            self._config["airllm_packages_path"] = None
+        else:
+            self._config["airllm_packages_path"] = str(value).strip()

@@ -139,6 +139,33 @@ As configurações são salvas em:
 - **Windows**: `%APPDATA%/AILocalManager/config.json`
 - **Linux/Mac**: `~/.config/ailocalmanager/config.json`
 
+### Localizar o pacote AirLLM nos arquivos
+
+Se o aplicativo mostrar que o **AirLLM não está instalado** ou falhar ao importar o pacote, mesmo depois de `pip install airllm`, isso costuma acontecer quando o app roda com **outro Python** do que o que você usou no terminal (por exemplo, executável empacotado ou IDE apontando para outro interpretador).
+
+1. Abra **Configurações** no app.
+2. Na seção **AirLLM**, use **Procurar…** e selecione uma destas pastas:
+   - A pasta **`site-packages`** do ambiente onde o `airllm` foi instalado, por exemplo:
+     - Windows: `...\venv\Lib\site-packages`
+     - Linux/macOS: `.../lib/python3.x/site-packages`
+   - Ou a **raiz do ambiente virtual** (`venv`): o app tenta localizar `site-packages` automaticamente.
+3. Confirme se a linha de status abaixo do campo indica que foi encontrada uma subpasta **`airllm`**.
+4. Clique em **Salvar Configurações** e use **Verificar Requisitos do Sistema** para testar de novo.
+
+**Como descobrir o caminho no terminal** (use o mesmo Python com que você pretende rodar o app):
+
+```bash
+pip show airllm
+```
+
+O campo **Location** aponta para a pasta `site-packages` correta. Você também pode usar:
+
+```bash
+python -c "import site; print(site.getsitepackages())"
+```
+
+A opção **Limpar** remove o caminho extra e volta a usar apenas o `sys.path` padrão do processo que executa o aplicativo.
+
 ## 🤝 Contribuição
 
 Contribuições são bem-vindas! Abra uma issue ou pull request.
