@@ -33,33 +33,33 @@ class ExtensionsTab(QWidget):
         left_col.setContentsMargins(0, 0, 0, 0)
         
         header_row = QHBoxLayout()
-        header = QLabel("🧩 Loaded Extensions")
+        header = QLabel(f"🧩 {t('extensions.loaded', 'Loaded Extensions')}")
         header.setStyleSheet("font-size: 24px; font-weight: bold; color: #cdd6f4;")
         header_row.addWidget(header)
         header_row.addStretch()
 
         # Add Extension Button
-        self.add_ext_btn = QPushButton("➕ Add Plugin")
+        self.add_ext_btn = QPushButton(f"➕ {t('extensions.add', 'Add Plugin')}")
         self.add_ext_btn.setObjectName("PrimaryBtn")
         self.add_ext_btn.clicked.connect(self._add_extension)
         header_row.addWidget(self.add_ext_btn)
 
         # Open Folder Button
-        self.open_folder_btn = QPushButton("📂 Folder")
+        self.open_folder_btn = QPushButton(f"📂 {t('extensions.folder', 'Folder')}")
         self.open_folder_btn.setObjectName("GhostBtn")
-        self.open_folder_btn.setToolTip("Open the extensions folder")
+        self.open_folder_btn.setToolTip(t("extensions.open_folder_tip", "Open the extensions folder"))
         self.open_folder_btn.clicked.connect(self._open_extensions_folder)
         header_row.addWidget(self.open_folder_btn)
 
         # Refresh
-        self.refresh_btn = QPushButton("🔃 Reload")
+        self.refresh_btn = QPushButton(f"🔃 {t('chat.refresh', 'Reload')}")
         self.refresh_btn.setObjectName("GhostBtn")
         self.refresh_btn.clicked.connect(self._reload_extensions)
         header_row.addWidget(self.refresh_btn)
 
         left_col.addLayout(header_row)
 
-        desc = QLabel("Add .py scripts to the extensions folder to grant AirLLM new abilities!")
+        desc = QLabel(t("extensions.desc", "Add .py scripts to the extensions folder to grant AirLLM new abilities!"))
         desc.setStyleSheet("color: #a6adc8; font-size: 14px; margin-bottom: 8px;")
         left_col.addWidget(desc)
 

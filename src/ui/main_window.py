@@ -13,6 +13,7 @@ from .settings_tab import SettingsTab
 from .extensions_tab import ExtensionsTab
 from ..utils.config import Config
 from src.utils.extensions import ExtensionManager
+from src.utils.i18n import t
 
 
 # ─────────────────────────────────── Theme ────────────────────────────────────
@@ -385,7 +386,6 @@ class MainWindow(QMainWindow):
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
-        self.setWindowTitle("AirLLMEasy")
         self.setWindowTitle(t("app.name", "AirLLMEasy"))
         self.setMinimumSize(1000, 650)
 
