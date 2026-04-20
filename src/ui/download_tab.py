@@ -86,6 +86,7 @@ class DownloadTab(QWidget):
 
         installed_title = QLabel(t("download.title", "Installed Models"))
         installed_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #b4befe;")
+        self.installed_title = installed_title
         header_row.addWidget(installed_title)
         header_row.addStretch()
 
@@ -136,6 +137,7 @@ class DownloadTab(QWidget):
 
         dl_title = QLabel(t("download.new_model", "Download New Model"))
         dl_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #89b4fa;")
+        self.dl_title = dl_title
         dl_header_row.addWidget(dl_title)
         dl_header_row.addStretch()
         download_layout.addLayout(dl_header_row)
@@ -158,6 +160,7 @@ class DownloadTab(QWidget):
 
         hf_repo_label = QLabel(t("download.hf_repo", "HuggingFace Repository:"))
         hf_repo_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
+        self.hf_repo_label = hf_repo_label
         hf_layout.addWidget(hf_repo_label)
 
         self.hf_repo_input = QLineEdit()
@@ -166,6 +169,7 @@ class DownloadTab(QWidget):
 
         hf_file_label = QLabel(t("download.hf_file", "GGUF file name:"))
         hf_file_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
+        self.hf_file_label = hf_file_label
         hf_layout.addWidget(hf_file_label)
 
         self.hf_file_input = QLineEdit()
@@ -175,6 +179,7 @@ class DownloadTab(QWidget):
         # Popular models
         popular_label = QLabel(t("download.popular", "Or choose a popular model:"))
         popular_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
+        self.popular_label = popular_label
         hf_layout.addWidget(popular_label)
 
         self.hf_popular_combo = QComboBox()
@@ -248,6 +253,8 @@ class DownloadTab(QWidget):
         self.model_combo.setVisible(is_ollama)
         self.model_selector_label.setVisible(is_ollama)
         self.hf_frame.setVisible(not is_ollama)
+
+        self.retranslateUi()
 
         if is_ollama:
             self._populate_ollama_models()
@@ -435,3 +442,16 @@ class DownloadTab(QWidget):
             else:
                 self.status_label.setText(f"❌ {t('download.error_removing', 'Error removing model')}")
                 self.status_label.setStyleSheet("color: #f38ba8; font-size: 12px;")
+
+    def retranslateUi(self):
+        """Update all strings in this tab."""
+        self.installed_title.setText(t("download.title", "Installed Models"))
+        self.refresh_btn.setText(f"🔄 {t('download.refresh', 'Refresh')}")
+        self.delete_btn.setText(f"🗑 {t('download.remove', 'Remove')}")
+        self.dl_title.setText(t("download.new_model", "Download New Model"))
+        self.model_selector_label.setText(t("download.select_model", "Select a model:"))
+        self.hf_repo_label.setText(t("download.hf_repo", "HuggingFace Repository:"))
+        self.hf_file_label.setText(t("download.hf_file", "GGUF file name:"))
+        self.popular_label.setText(t("download.popular", "Or choose a popular model:"))
+        self.download_btn.setText(f"⬇️ {t('download.btn', 'Download Model')}")
+        # Status labels are updated dynamically on action

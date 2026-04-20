@@ -599,6 +599,37 @@ class MainWindow(QMainWindow):
             btn.style().polish(btn)
         self.tab_widget.setCurrentIndex(index)
 
+    def _retranslate_ui(self):
+        """Update UI texts with current language."""
+        self.setWindowTitle(t("app.name", "AirLLMEasy"))
+        
+        # Sidebar buttons
+        sidebar_keys = [
+            "sidebar.download", "sidebar.chat", 
+            "sidebar.extensions", "sidebar.settings"
+        ]
+        sidebar_defaults = ["Download", "Chat", "Extensions", "Settings"]
+        
+        for i, btn in enumerate(self._sidebar_buttons):
+            if i < len(sidebar_keys):
+                btn.setText(f"  {t(sidebar_keys[i], sidebar_defaults[i])}")
+                
+        # Tab titles (though they are hidden, keep them synced)
+        for i in range(len(sidebar_keys)):
+            self.tab_widget.setTabText(i, t(sidebar_keys[i], sidebar_defaults[i]))
+
+        # Menu and Statusbar
+        # (Menu is harder to update live without recreation, but let's do status bar)
+        self._setup_statusbar()
+        self._update_backend_badge()
+
+        # Update tabs
+        if hasattr(self, "download_tab"):
+            self.download_tab.retranslateUi()
+        if hasattr(self, "settings_tab"):
+            self.settings_tab.retranslateUi()
+        # Add ExtensionsTab if I implement it
+
     # ─────────────────────────── Backend badge ────────────────────────────
 
     def _update_backend_badge(self):
@@ -641,7 +672,10 @@ class MainWindow(QMainWindow):
 
     def _on_settings_changed(self):
         """Called when settings change."""
-        self._update_backend_badge()
+        from src.utils.i18n import load_language
+        load_language(self.config.language)
+        
+        self._retranslate_ui()
         self._apply_theme()
         self.download_tab.refresh_for_backend()
 

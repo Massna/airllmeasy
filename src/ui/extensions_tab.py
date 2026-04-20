@@ -36,6 +36,7 @@ class ExtensionsTab(QWidget):
         header_row = QHBoxLayout()
         header = QLabel(f"🧩 {t('extensions.loaded', 'Loaded Extensions')}")
         header.setStyleSheet("font-size: 24px; font-weight: bold; color: #cdd6f4;")
+        self.header = header
         header_row.addWidget(header)
         header_row.addStretch()
 
@@ -62,6 +63,7 @@ class ExtensionsTab(QWidget):
 
         desc = QLabel(t("extensions.desc", "Add .py scripts to the extensions folder to grant AirLLM new abilities!"))
         desc.setStyleSheet("color: #a6adc8; font-size: 14px; margin-bottom: 8px;")
+        self.desc_label = desc
         left_col.addWidget(desc)
 
         self.ext_list = QListWidget()
@@ -95,7 +97,7 @@ class ExtensionsTab(QWidget):
         details_layout.setContentsMargins(24, 24, 24, 24)
         details_layout.setSpacing(16)
 
-        self.detail_title = QLabel("Select an extension")
+        self.detail_title = QLabel(t("extensions.select", "Select an extension"))
         self.detail_title.setStyleSheet("font-size: 20px; font-weight: bold; color: #cdd6f4;")
         details_layout.addWidget(self.detail_title)
 
@@ -115,10 +117,10 @@ class ExtensionsTab(QWidget):
         details_layout.addWidget(self.detail_desc)
 
         # Show Ai Tools Box
-        self.tools_label = QLabel("Available AI Tools:")
-        self.tools_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #89b4fa; margin-top: 10px;")
-        self.tools_label.setVisible(False)
-        details_layout.addWidget(self.tools_label)
+        self.tools_header = QLabel(t("extensions.ai_tools", "Available AI Tools:"))
+        self.tools_header.setStyleSheet("font-size: 14px; font-weight: bold; color: #89b4fa; margin-top: 8px;")
+        self.tools_header.setVisible(False)
+        details_layout.addWidget(self.tools_header)
 
         self.tools_display = QTextBrowser()
         self.tools_display.setStyleSheet("""
@@ -208,19 +210,39 @@ class ExtensionsTab(QWidget):
         # Tools
         tools = ext.get_ai_tools()
         if tools:
-            self.tools_label.setVisible(True)
+            self.tools_header.setVisible(True)
             self.tools_display.setVisible(True)
             tools_html = ""
             for t in tools:
                 tools_html += f"<b>{t.get('name', 'unknown')}</b>: {t.get('description', '')}<br><br>"
             self.tools_display.setHtml(tools_html)
         else:
-            self.tools_label.setVisible(False)
+            self.tools_header.setVisible(False)
             self.tools_display.setVisible(False)
 
     def _clear_details(self):
-        self.detail_title.setText("Select an extension")
+        self.detail_title.setText(t("extensions.select", "Select an extension"))
         self.detail_meta.setText("")
         self.detail_desc.setText("")
-        self.tools_label.setVisible(False)
+        self.tools_header.setVisible(False)
         self.tools_display.setVisible(False)
+
+    def retranslateUi(self):
+        """Update all strings in this tab."""
+        if hasattr(self, 'header'):
+            self.header.setText(f"🧩 {t('extensions.loaded', 'Loaded Extensions')}")
+        self.add_ext_btn.setText(f"➕ {t('extensions.add', 'Add Plugin')}")
+        self.open_folder_btn.setText(f"📂 {t('extensions.folder', 'Folder')}")
+        self.open_folder_btn.setToolTip(t("extensions.open_folder_tip", "Open the extensions folder"))
+        self.refresh_btn.setText(f"🔃 {t('chat.refresh', 'Reload')}")
+        self.desc_label.setText(t("extensions.desc", "Add .py scripts to the extensions folder to grant AirLLM new abilities!"))
+        
+        # Details
+        curr = self.ext_list.currentItem()
+        if not curr:
+            self.detail_title.setText(t("extensions.select", "Select an extension"))
+        
+        self.tools_header.setText(t("extensions.ai_tools", "Available AI Tools:"))
+        
+        # Reloading list to update items
+        self._reload_extensions()

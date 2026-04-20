@@ -466,12 +466,15 @@ class SettingsTab(QWidget):
         self.config.temperature = self.temperature_spin.value()
         self.config.theme = self.theme_combo.currentData()
         self.config.language = self.lang_combo.currentData()
+        from src.utils.i18n import load_language
+        load_language(self.config.language)
 
         # AI Behavior
         self.config.system_prompt = self.system_prompt_input.toPlainText().strip() or "You are a helpful assistant."
         self.config.file_ops_enabled = self.file_ops_check.isChecked()
 
         if self.config.save():
+            self.retranslateUi()
             self._update_airllm_path_hint()
             msg = t("dialogs.success_msg", "Settings saved successfully!")
             if self.config.airllm_packages_path and not ok:
@@ -493,9 +496,49 @@ class SettingsTab(QWidget):
 
         if reply == QMessageBox.Yes:
             self.config.reset()
+            load_language(self.config.language)
+            self.retranslateUi()
             self._load_settings()
             set_airllm_packages_path(self.config.airllm_packages_path)
-            QMessageBox.information(self, "Success", "Settings restored!")
+            QMessageBox.information(self, t("dialogs.success", "Success"), t("dialogs.success_msg", "Settings restored!"))
+
+    def retranslateUi(self):
+        """Update all strings in this tab."""
+        self.download_group.setTitle(f"  {t('settings.download_backend', 'Download Backend')}")
+        self.ollama_radio.setText(t("download.ollama", "Ollama"))
+        self.ollama_radio.setToolTip(t("settings.ollama_tip", "Downloads models from the Ollama registry"))
+        self.lmstudio_radio.setText(t("download.lmstudio", "LMStudio"))
+        self.lmstudio_radio.setToolTip(t("settings.lmstudio_tip", "Downloads GGUF models from HuggingFace"))
+        
+        self.airllm_group.setTitle(f"  {t('settings.airllm_title', 'AirLLM — Optimized Execution')}")
+        self.comp_label.setText(t("settings.compression", "Compression:"))
+        
+        # Combo items are harder to update without clearing, but let's try just the title for now
+        self.ctx_label.setText(t("settings.context_size", "Internal Context (n_ctx):"))
+        self.path_help.setText(t("settings.packages_help", "If the app can't find AirLLM..."))
+        self.airllm_path_lbl.setText(t("settings.airllm_folder", "AirLLM Folder:"))
+        self.airllm_browse_btn.setText(f"📁 {t('settings.browse', 'Browse…')}")
+        self.airllm_autodetect_btn.setText(f"🔎 {t('settings.autodetect', 'Auto-detect')}")
+        self.airllm_clear_btn.setText(f"🧹 {t('settings.clear', 'Clear')}")
+        self.system_status_btn.setText(f"🔍 {t('settings.check_requirements', 'Check System Requirements')}")
+        self.install_airllm_btn.setText(f"⬇️ {t('settings.install_airllm', 'Install AirLLM')}")
+        
+        self.ai_group.setTitle(f"  {t('settings.ai_behavior', 'AI Behavior')}")
+        self.sys_prompt_lbl.setText(t("settings.sys_prompt", "System Prompt"))
+        self.system_prompt_input.setPlaceholderText(t("chat.prompt_placeholder", "Type your message here..."))
+        self.file_ops_check.setText(t("settings.file_ops", "Allow AI to create and modify files"))
+        
+        self.gen_group.setTitle(f"  {t('settings.generation_parameters', 'Generation Parameters')}")
+        self.max_tokens_lbl.setText(t("settings.max_tokens", "Max tokens:"))
+        self.temp_lbl.setText(t("settings.temperature", "Temperature:"))
+        # self.temp_hint.setText(t("settings.temp_hint", "..."))
+        
+        self.appearance_group.setTitle(f"  {t('settings.appearance', 'Appearance')}")
+        self.theme_lbl.setText(t("settings.theme", "Theme:"))
+        self.lang_lbl.setText(t("settings.language", "Language:"))
+        
+        self.reset_btn.setText(f"🔄  {t('settings.reset', 'Restore Defaults')}")
+        self.save_btn.setText(f"💾  {t('settings.save', 'Save Settings')}")
 
     def _browse_airllm_folder(self):
         start = self.airllm_path_input.text().strip() or None
