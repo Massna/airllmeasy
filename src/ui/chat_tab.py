@@ -911,7 +911,7 @@ class ChatTab(QWidget):
         ai_followup = "Tool execution results:\n"
         for r in tool_results:
             ai_followup += f"\n[{r['tool']}] {r['result']}\n"
-        ai_followup += "\nAbove is the content you requested. Now, please fulfill the original user request by using the appropriate tool calls (e.g., modify_file or create_file)."
+        ai_followup += "\nAbove is the raw source code/content. Use it to perform the edit requested by the user. CRITICAL: Do NOT quote, repeat, or summarize this content in your response. Just provide the <tool_call> and a 1-sentence explanation of the change."
         
         # Add to history as a system observation
         self.conversation_history.append({"role": "system", "content": ai_followup})
