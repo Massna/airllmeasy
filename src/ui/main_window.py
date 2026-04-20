@@ -386,6 +386,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.config = config
         self.setWindowTitle("AirLLMEasy")
+        self.setWindowTitle(t("app.name", "AirLLMEasy"))
         self.setMinimumSize(1000, 650)
 
         # Restore saved geometry
@@ -428,7 +429,7 @@ class MainWindow(QMainWindow):
         logo_label.setStyleSheet("font-size: 22px; padding-right: 4px;")
         top_bar_layout.addWidget(logo_label)
 
-        title_label = QLabel("AirLLMEasy")
+        title_label = QLabel(t("app.name", "AirLLMEasy"))
         title_label.setStyleSheet(
             "font-size: 16px; font-weight: bold; "
             "background: transparent; "
@@ -446,13 +447,13 @@ class MainWindow(QMainWindow):
         top_bar_layout.addStretch()
 
         # Quick backend switch buttons
-        self.ollama_quick_btn = QPushButton("Ollama")
+        self.ollama_quick_btn = QPushButton(t("download.ollama", "Ollama"))
         self.ollama_quick_btn.setObjectName("GhostBtn")
         self.ollama_quick_btn.setFixedHeight(32)
         self.ollama_quick_btn.clicked.connect(lambda: self._switch_backend("ollama"))
         top_bar_layout.addWidget(self.ollama_quick_btn)
 
-        self.lmstudio_quick_btn = QPushButton("LMStudio")
+        self.lmstudio_quick_btn = QPushButton(t("download.lmstudio", "LMStudio"))
         self.lmstudio_quick_btn.setObjectName("GhostBtn")
         self.lmstudio_quick_btn.setFixedHeight(32)
         self.lmstudio_quick_btn.clicked.connect(lambda: self._switch_backend("lmstudio"))
@@ -474,10 +475,10 @@ class MainWindow(QMainWindow):
 
         self._sidebar_buttons = []
         sidebar_items = [
-            ("📥", "Download", 0),
-            ("💬", "Chat", 1),
-            ("🧩", "Extensions", 2),
-            ("⚙️", "Settings", 3),
+            ("📥", t("sidebar.download", "Download"), 0),
+            ("💬", t("sidebar.chat", "Chat"), 1),
+            ("🧩", t("sidebar.extensions", "Extensions"), 2),
+            ("⚙️", t("sidebar.settings", "Settings"), 3),
         ]
         
         for icon, tooltip, idx in sidebar_items:
@@ -494,7 +495,7 @@ class MainWindow(QMainWindow):
         # About button at bottom
         about_btn = QPushButton("ℹ️")
         about_btn.setFixedSize(60, 48)
-        about_btn.setToolTip("About")
+        about_btn.setToolTip(t("sidebar.about", "About"))
         about_btn.clicked.connect(self._show_about)
         sidebar_layout.addWidget(about_btn, alignment=Qt.AlignCenter)
 
@@ -514,20 +515,20 @@ class MainWindow(QMainWindow):
 
         # Download Tab
         self.download_tab = DownloadTab(self.config)
-        self.tab_widget.addTab(self.download_tab, "Download")
+        self.tab_widget.addTab(self.download_tab, t("sidebar.download", "Download"))
 
         # Chat Tab
         self.chat_tab = ChatTab(self.config, self.extension_mgr)
-        self.tab_widget.addTab(self.chat_tab, "Chat")
+        self.tab_widget.addTab(self.chat_tab, t("sidebar.chat", "Chat"))
 
         # Extensions Tab
         self.extensions_tab = ExtensionsTab(self.config, self.extension_mgr)
-        self.tab_widget.addTab(self.extensions_tab, "Extensions")
+        self.tab_widget.addTab(self.extensions_tab, t("sidebar.extensions", "Extensions"))
 
         # Settings Tab
         self.settings_tab = SettingsTab(self.config)
         self.settings_tab.settings_changed.connect(self._on_settings_changed)
-        self.tab_widget.addTab(self.settings_tab, "Settings")
+        self.tab_widget.addTab(self.settings_tab, t("sidebar.settings", "Settings"))
 
         content_layout.addWidget(self.tab_widget)
 
@@ -542,33 +543,33 @@ class MainWindow(QMainWindow):
         """Set up the application menu."""
         menubar = self.menuBar()
 
-        file_menu = menubar.addMenu("&File")
+        file_menu = menubar.addMenu(t("menu.file", "&File"))
 
-        refresh_action = QAction("&Refresh List", self)
+        refresh_action = QAction(t("menu.refresh", "&Refresh List"), self)
         refresh_action.setShortcut("F5")
         refresh_action.triggered.connect(self._refresh_models)
         file_menu.addAction(refresh_action)
 
         file_menu.addSeparator()
 
-        exit_action = QAction("&Exit", self)
+        exit_action = QAction(t("menu.exit", "&Exit"), self)
         exit_action.setShortcut("Ctrl+Q")
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-        backend_menu = menubar.addMenu("&Backend")
+        backend_menu = menubar.addMenu(t("menu.backend", "&Backend"))
 
-        ollama_action = QAction("Use &Ollama", self)
+        ollama_action = QAction(t("menu.use_ollama", "Use &Ollama"), self)
         ollama_action.triggered.connect(lambda: self._switch_backend("ollama"))
         backend_menu.addAction(ollama_action)
 
-        lmstudio_action = QAction("Use &LMStudio", self)
+        lmstudio_action = QAction(t("menu.use_lmstudio", "Use &LMStudio"), self)
         lmstudio_action.triggered.connect(lambda: self._switch_backend("lmstudio"))
         backend_menu.addAction(lmstudio_action)
 
-        help_menu = menubar.addMenu("&Help")
+        help_menu = menubar.addMenu(t("menu.help", "&Help"))
 
-        about_action = QAction("&About", self)
+        about_action = QAction(t("menu.about", "&About"), self)
         about_action.triggered.connect(self._show_about)
         help_menu.addAction(about_action)
 
@@ -576,7 +577,7 @@ class MainWindow(QMainWindow):
         """Set up the status bar."""
         self.statusbar = QStatusBar()
         self.setStatusBar(self.statusbar)
-        self.statusbar.showMessage("Ready  •  AirLLMEasy v1.0")
+        self.statusbar.showMessage(f"{t('app.ready', 'Ready')}  •  {t('app.name', 'AirLLMEasy')} {t('app.version', 'v1.0')}")
 
     # ─────────────────────────── Theme ────────────────────────────────────
 
@@ -604,10 +605,10 @@ class MainWindow(QMainWindow):
         """Update the current backend badge."""
         backend = self.config.download_backend
         if backend == "ollama":
-            text = "● Ollama"
+            text = f"● {t('download.ollama', 'Ollama')}"
             color = "#a6e3a1"
         else:
-            text = "● LMStudio"
+            text = f"● {t('download.lmstudio', 'LMStudio')}"
             color = "#89b4fa"
 
         self.backend_badge.setText(text)
@@ -636,7 +637,7 @@ class MainWindow(QMainWindow):
     def _refresh_models(self):
         """Refresh the model list."""
         self.download_tab.refresh_models()
-        self.statusbar.showMessage("Model list updated")
+        self.statusbar.showMessage(t("menu.refresh", "Model list updated"))
 
     def _on_settings_changed(self):
         """Called when settings change."""
@@ -648,12 +649,11 @@ class MainWindow(QMainWindow):
         """Show the About dialog."""
         QMessageBox.about(
             self,
-            "About AirLLMEasy",
-            """<div style="text-align:center">
-            <h2 style="color:#89b4fa">⚡ AirLLMEasy</h2>
+            t("dialogs.about_title", "About AirLLMEasy"),
+            f"""<div style="text-align:center">
+            <h2 style="color:#89b4fa">⚡ {t('app.name', 'AirLLMEasy')}</h2>
             <p style="color:#6c7086">Version 1.0.0</p>
             <br>
-            <p>Manage and run AI models locally with a premium experience.</p>
             <br>
             <p><b>Supported backends:</b></p>
             <ul style="text-align:left">

@@ -60,6 +60,7 @@ def build(*, console: bool = False):
         "--hidden-import=requests",
         "--hidden-import=httpx",
         "--hidden-import=src.utils.extensions",
+        "--hidden-import=src.utils.i18n",
         "--hidden-import=src.backends.ollama_backend",
         "--hidden-import=src.backends.lmstudio_backend",
         "--hidden-import=src.backends.airllm_backend",

@@ -203,3 +203,12 @@ class Config:
     def current_session_id(self, value: str) -> None:
         self._config["current_session_id"] = value
 
+    @property
+    def language(self) -> str:
+        return self._config.get("language", "en")
+
+    @language.setter
+    def language(self, value: str) -> None:
+        if value in ("en", "pt"):
+            self._config["language"] = value
+

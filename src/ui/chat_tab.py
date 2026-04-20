@@ -385,6 +385,8 @@ class WorkspacePanel(QFrame):
 
 # ─────────────────────────────── Chat Tab ─────────────────────────────────────
 
+from src.utils.i18n import t
+
 class ChatTab(QWidget):
     """Chat tab with AI models — premium design with file operations."""
 
@@ -427,7 +429,7 @@ class ChatTab(QWidget):
         session_layout = QHBoxLayout(session_frame)
         session_layout.setContentsMargins(14, 8, 14, 8)
         
-        session_label = QLabel("Session:")
+        session_label = QLabel(t("chat.session", "Session:"))
         session_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
         session_layout.addWidget(session_label)
         
@@ -436,13 +438,14 @@ class ChatTab(QWidget):
         self.session_combo.currentIndexChanged.connect(self._on_session_changed)
         session_layout.addWidget(self.session_combo)
         
-        self.new_session_btn = QPushButton("➕ New")
+        self.new_session_btn = QPushButton(f"➕ {t('chat.new_session', 'New')}")
         self.new_session_btn.setObjectName("SuccessBtn")
         self.new_session_btn.clicked.connect(self._create_new_session)
         session_layout.addWidget(self.new_session_btn)
         
         self.del_session_btn = QPushButton("🗑️")
         self.del_session_btn.setObjectName("DangerBtn")
+        self.del_session_btn.setToolTip(t("chat.delete_session", "Delete Session"))
         self.del_session_btn.clicked.connect(self._delete_session)
         session_layout.addWidget(self.del_session_btn)
         
@@ -456,18 +459,18 @@ class ChatTab(QWidget):
         config_layout.setContentsMargins(14, 10, 14, 10)
         config_layout.setSpacing(12)
 
-        run_label = QLabel("Run with:")
+        run_label = QLabel(t("chat.run_with", "Run with:"))
         run_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
         config_layout.addWidget(run_label)
 
         self.exec_backend_group = QButtonGroup(self)
 
-        self.ollama_radio = QRadioButton("Ollama")
+        self.ollama_radio = QRadioButton(t("download.ollama", "Ollama"))
         self.ollama_radio.setChecked(True)
         self.exec_backend_group.addButton(self.ollama_radio)
         config_layout.addWidget(self.ollama_radio)
 
-        self.lmstudio_radio = QRadioButton("LMStudio")
+        self.lmstudio_radio = QRadioButton(t("download.lmstudio", "LMStudio"))
         self.exec_backend_group.addButton(self.lmstudio_radio)
         config_layout.addWidget(self.lmstudio_radio)
 
@@ -485,7 +488,7 @@ class ChatTab(QWidget):
         config_layout.addWidget(divider)
 
         # Model selector
-        model_label = QLabel("Model:")
+        model_label = QLabel(t("chat.model", "Model:"))
         model_label.setStyleSheet("color: #6c7086; font-size: 12px;")
         config_layout.addWidget(model_label)
 
@@ -493,7 +496,7 @@ class ChatTab(QWidget):
         self.model_combo.setMinimumWidth(200)
         config_layout.addWidget(self.model_combo)
 
-        self.refresh_models_btn = QPushButton("↻ Refresh")
+        self.refresh_models_btn = QPushButton(f"↻ {t('chat.refresh', 'Refresh')}")
         self.refresh_models_btn.setObjectName("GhostBtn")
         self.refresh_models_btn.setFixedHeight(32)
         self.refresh_models_btn.clicked.connect(self._refresh_models)
@@ -502,7 +505,7 @@ class ChatTab(QWidget):
         config_layout.addStretch()
 
         # Load button (for AirLLM)
-        self.load_model_btn = QPushButton("📂 Load")
+        self.load_model_btn = QPushButton(f"📂 {t('chat.load', 'Load')}")
         self.load_model_btn.setObjectName("SuccessBtn")
         self.load_model_btn.setVisible(False)
         self.load_model_btn.clicked.connect(self._load_airllm_model)
@@ -535,7 +538,7 @@ class ChatTab(QWidget):
 
         self.input_text = QPlainTextEdit()
         self.input_text.setMaximumHeight(90)
-        self.input_text.setPlaceholderText("Type your message here… (Enter to send, Shift+Enter for new line)")
+        self.input_text.setPlaceholderText(t("chat.placeholder", "Type your message here…"))
         self.input_text.setFont(chat_font)
         self.input_text.setStyleSheet("""
             QPlainTextEdit {
@@ -555,7 +558,7 @@ class ChatTab(QWidget):
         buttons_layout.setSpacing(8)
 
         # Parameters
-        tokens_label = QLabel("Tokens:")
+        tokens_label = QLabel(t("chat.tokens", "Tokens:"))
         tokens_label.setStyleSheet("color: #6c7086; font-size: 11px;")
         buttons_layout.addWidget(tokens_label)
 
@@ -577,7 +580,7 @@ class ChatTab(QWidget):
         self.tokens_spin.setStyleSheet(spinbox_css)
         buttons_layout.addWidget(self.tokens_spin)
 
-        temp_label = QLabel("Temp:")
+        temp_label = QLabel(t("chat.temp", "Temp:"))
         temp_label.setStyleSheet("color: #6c7086; font-size: 11px;")
         buttons_layout.addWidget(temp_label)
 
@@ -592,13 +595,13 @@ class ChatTab(QWidget):
 
         buttons_layout.addStretch()
 
-        self.clear_btn = QPushButton("🗑 Clear")
+        self.clear_btn = QPushButton(f"🗑 {t('chat.clear', 'Clear')}")
         self.clear_btn.setObjectName("GhostBtn")
         self.clear_btn.setFixedHeight(34)
         self.clear_btn.clicked.connect(self._clear_chat)
         buttons_layout.addWidget(self.clear_btn)
 
-        self.send_btn = QPushButton("Send 🚀")
+        self.send_btn = QPushButton(t("chat.send", "Send 🚀"))
         self.send_btn.setMinimumWidth(100)
         self.send_btn.setFixedHeight(36)
         self.send_btn.clicked.connect(self._send_message)
@@ -640,7 +643,7 @@ class ChatTab(QWidget):
         log_layout.setContentsMargins(12, 10, 12, 10)
         log_layout.setSpacing(6)
 
-        log_header = QLabel("📋 File Operations Log")
+        log_header = QLabel(t("chat.log_header", "📋 File Operations Log"))
         log_header.setStyleSheet("font-size: 12px; font-weight: bold; color: #a6e3a1;")
         log_layout.addWidget(log_header)
 
@@ -664,11 +667,10 @@ class ChatTab(QWidget):
         layout.addWidget(right_sidebar)
 
         # Welcome message
-        self._add_system_message("Welcome to AirLLMEasy! Select a model and start chatting.")
+        self._add_system_message(t("chat.welcome", "Welcome to AirLLMEasy! Select a model and start chatting."))
         if self.config.workspace_folders:
             self._add_system_message(
-                f"📁 Workspace loaded with {len(self.config.workspace_folders)} folder(s). "
-                "AI can create, edit, and move files."
+                t("chat.workspace_loaded", "📁 Workspace loaded with {} folder(s).").format(len(self.config.workspace_folders))
             )
 
     # ─────────────────────────── Backend switching ────────────────────────
@@ -689,10 +691,10 @@ class ChatTab(QWidget):
         """Update AirLLM status."""
         if self.airllm.is_model_loaded():
             model_name = self.airllm.get_loaded_model_name()
-            self.status_label.setText(f"✅ AirLLM: {model_name} loaded")
+            self.status_label.setText(f"✅ {t('chat.airllm_loaded', 'AirLLM: {} loaded').format(model_name)}")
             self.status_label.setStyleSheet("color: #a6e3a1; font-size: 11px;")
         else:
-            self.status_label.setText("ℹ️ AirLLM: No model loaded — click Load Model")
+            self.status_label.setText(f"ℹ️ {t('chat.airllm_no_model', 'AirLLM: No model loaded — click Load Model')}")
             self.status_label.setStyleSheet("color: #fab387; font-size: 11px;")
 
     def _refresh_models(self):
@@ -704,10 +706,10 @@ class ChatTab(QWidget):
                 models = self.ollama.list_models()
                 for model in models:
                     self.model_combo.addItem(model.get("name", ""))
-                self.status_label.setText("🟢 Connected to Ollama")
+                self.status_label.setText(f"🟢 {t('download.ollama_running', 'Ollama is running')}")
                 self.status_label.setStyleSheet("color: #a6e3a1; font-size: 11px;")
             else:
-                self.status_label.setText("🔴 Ollama is not running")
+                self.status_label.setText(f"🔴 {t('chat.ollama_not_running_short', 'Ollama is not running')}")
                 self.status_label.setStyleSheet("color: #f38ba8; font-size: 11px;")
 
         elif self.lmstudio_radio.isChecked():
@@ -715,14 +717,14 @@ class ChatTab(QWidget):
                 models = self.lmstudio.list_models()
                 for model in models:
                     self.model_combo.addItem(model.get("name", ""))
-                self.status_label.setText("🟢 Connected to LMStudio")
+                self.status_label.setText(f"🟢 {t('download.lmstudio_running', 'LMStudio server is running')}")
                 self.status_label.setStyleSheet("color: #a6e3a1; font-size: 11px;")
             else:
-                self.status_label.setText("🔴 LMStudio server is not running")
+                self.status_label.setText(f"🔴 {t('chat.lmstudio_not_running_short', 'LMStudio server is not running')}")
                 self.status_label.setStyleSheet("color: #f38ba8; font-size: 11px;")
 
         if self.model_combo.count() == 0 and not self.airllm_radio.isChecked():
-            self.model_combo.addItem("No models available")
+            self.model_combo.addItem(t("chat.no_models", "No models available"))
 
     # ─────────────────────────── AirLLM loading ──────────────────────────
 
@@ -738,7 +740,7 @@ class ChatTab(QWidget):
 
     def _start_model_load(self, model_path: str, model_type: str):
         self.load_model_btn.setEnabled(False)
-        self.status_label.setText(f"⏳ Loading {model_path}...")
+        self.status_label.setText(f"⏳ {t('chat.loading_model', 'Loading {}...').format(model_path)}")
 
         self._pending_model_path = model_path
         self._pending_model_type = model_type

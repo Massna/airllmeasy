@@ -19,6 +19,7 @@ from PySide6.QtGui import QFont
 
 from src.ui.main_window import MainWindow
 from src.utils.config import Config
+from src.utils.i18n import load_language
 from src.utils.airllm_import import (
     set_airllm_packages_path,
     try_import_airllm,
@@ -45,6 +46,7 @@ def main():
     
     # Load settings
     config = Config()
+    load_language(config.language)
     set_airllm_packages_path(config.airllm_packages_path)
 
     # Auto-detection: if airllm is not importable, try to find it automatically

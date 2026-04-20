@@ -327,24 +327,42 @@ class SettingsTab(QWidget):
         layout.addWidget(gen_group)
 
         # === Appearance ===
-        appearance_group = QGroupBox("  Appearance")
+        appearance_group = QGroupBox(f"  {t('settings.appearance', 'Appearance')}")
         appearance_layout = QVBoxLayout(appearance_group)
 
         appearance_card = QFrame()
         appearance_card.setObjectName("Card")
-        appearance_card_layout = QHBoxLayout(appearance_card)
+        appearance_card_layout = QVBoxLayout(appearance_card)
         appearance_card_layout.setContentsMargins(12, 10, 12, 10)
+        appearance_card_layout.setSpacing(10)
 
-        theme_lbl = QLabel("Theme:")
+        # Theme
+        theme_row = QHBoxLayout()
+        theme_lbl = QLabel(t("settings.theme", "Theme:"))
         theme_lbl.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
-        appearance_card_layout.addWidget(theme_lbl)
+        theme_row.addWidget(theme_lbl)
 
         self.theme_combo = QComboBox()
-        self.theme_combo.addItem("🌙 Dark", "dark")
-        self.theme_combo.addItem("☀️ Light", "light")
+        self.theme_combo.addItem(f"🌙 {t('settings.dark', 'Dark')}", "dark")
+        self.theme_combo.addItem(f"☀️ {t('settings.light', 'Light')}", "light")
         self.theme_combo.setFixedWidth(140)
-        appearance_card_layout.addWidget(self.theme_combo)
-        appearance_card_layout.addStretch()
+        theme_row.addWidget(self.theme_combo)
+        theme_row.addStretch()
+        appearance_card_layout.addLayout(theme_row)
+
+        # Language
+        lang_row = QHBoxLayout()
+        lang_lbl = QLabel(t("settings.language", "Language:"))
+        lang_lbl.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
+        lang_row.addWidget(lang_lbl)
+
+        self.lang_combo = QComboBox()
+        self.lang_combo.addItem("🇺🇸 English", "en")
+        self.lang_combo.addItem("🇧🇷 Português", "pt")
+        self.lang_combo.setFixedWidth(140)
+        lang_row.addWidget(self.lang_combo)
+        lang_row.addStretch()
+        appearance_card_layout.addLayout(lang_row)
 
         appearance_layout.addWidget(appearance_card)
 
@@ -354,7 +372,7 @@ class SettingsTab(QWidget):
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(12)
 
-        self.reset_btn = QPushButton("🔄  Restore Defaults")
+        self.reset_btn = QPushButton(f"🔄  {t('settings.reset', 'Restore Defaults')}")
         self.reset_btn.setObjectName("GhostBtn")
         self.reset_btn.setFixedHeight(38)
         self.reset_btn.clicked.connect(self._reset_settings)
@@ -362,7 +380,7 @@ class SettingsTab(QWidget):
 
         buttons_layout.addStretch()
 
-        self.save_btn = QPushButton("💾  Save Settings")
+        self.save_btn = QPushButton(f"💾  {t('settings.save', 'Save Settings')}")
         self.save_btn.setMinimumWidth(160)
         self.save_btn.setFixedHeight(40)
         self.save_btn.setStyleSheet("""
@@ -422,6 +440,11 @@ class SettingsTab(QWidget):
         if index >= 0:
             self.theme_combo.setCurrentIndex(index)
 
+        lang = self.config.language
+        index = self.lang_combo.findData(lang)
+        if index >= 0:
+            self.lang_combo.setCurrentIndex(index)
+
         # AI Behavior
         self.system_prompt_input.setPlainText(self.config.system_prompt)
         self.file_ops_check.setChecked(self.config.file_ops_enabled)
@@ -444,6 +467,7 @@ class SettingsTab(QWidget):
         self.config.max_tokens = self.max_tokens_spin.value()
         self.config.temperature = self.temperature_spin.value()
         self.config.theme = self.theme_combo.currentData()
+        self.config.language = self.lang_combo.currentData()
 
         # AI Behavior
         self.config.system_prompt = self.system_prompt_input.toPlainText().strip() or "You are a helpful assistant."
@@ -451,16 +475,16 @@ class SettingsTab(QWidget):
 
         if self.config.save():
             self._update_airllm_path_hint()
-            msg = "Settings saved successfully!"
+            msg = t("dialogs.success_msg", "Settings saved successfully!")
             if self.config.airllm_packages_path and not ok:
                 msg += (
                     "\n\nWarning: could not confirm the airllm package at this path. "
                     "Check that the folder is the correct site-packages."
                 )
-            QMessageBox.information(self, "Success", msg)
+            QMessageBox.information(self, t("dialogs.success", "Success"), msg)
             self.settings_changed.emit()
         else:
-            QMessageBox.warning(self, "Error", "Error saving settings!")
+            QMessageBox.warning(self, t("dialogs.error", "Error"), t("dialogs.error_msg", "Error saving settings!"))
 
     def _reset_settings(self):
         reply = QMessageBox.question(

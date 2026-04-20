@@ -83,7 +83,7 @@ class DownloadTab(QWidget):
         installed_icon.setStyleSheet("font-size: 18px;")
         header_row.addWidget(installed_icon)
 
-        installed_title = QLabel("Installed Models")
+        installed_title = QLabel(t("download.title", "Installed Models"))
         installed_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #b4befe;")
         header_row.addWidget(installed_title)
         header_row.addStretch()
@@ -104,13 +104,13 @@ class DownloadTab(QWidget):
         installed_buttons = QHBoxLayout()
         installed_buttons.setSpacing(8)
 
-        self.refresh_btn = QPushButton("🔄 Refresh")
+        self.refresh_btn = QPushButton(f"🔄 {t('download.refresh', 'Refresh')}")
         self.refresh_btn.setObjectName("GhostBtn")
         self.refresh_btn.setFixedHeight(34)
         self.refresh_btn.clicked.connect(self.refresh_models)
         installed_buttons.addWidget(self.refresh_btn)
 
-        self.delete_btn = QPushButton("🗑 Remove")
+        self.delete_btn = QPushButton(f"🗑 {t('download.remove', 'Remove')}")
         self.delete_btn.setObjectName("DangerBtn")
         self.delete_btn.setFixedHeight(34)
         self.delete_btn.clicked.connect(self._delete_selected_model)
@@ -124,7 +124,7 @@ class DownloadTab(QWidget):
         download_panel = QFrame()
         download_panel.setObjectName("Card")
         download_layout = QVBoxLayout(download_panel)
-        download_layout.setContentsMargins(16, 16, 16, 16)
+        download_panel.setContentsMargins(16, 16, 16, 16)
         download_layout.setSpacing(12)
 
         # Header
@@ -133,14 +133,14 @@ class DownloadTab(QWidget):
         dl_icon.setStyleSheet("font-size: 18px;")
         dl_header_row.addWidget(dl_icon)
 
-        dl_title = QLabel("Download New Model")
+        dl_title = QLabel(t("download.new_model", "Download New Model"))
         dl_title.setStyleSheet("font-size: 15px; font-weight: bold; color: #89b4fa;")
         dl_header_row.addWidget(dl_title)
         dl_header_row.addStretch()
         download_layout.addLayout(dl_header_row)
 
         # Model selector (Ollama)
-        self.model_selector_label = QLabel("Select a model:")
+        self.model_selector_label = QLabel(t("download.select_model", "Select a model:"))
         self.model_selector_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
         download_layout.addWidget(self.model_selector_label)
 
@@ -155,7 +155,7 @@ class DownloadTab(QWidget):
         hf_layout.setContentsMargins(0, 0, 0, 0)
         hf_layout.setSpacing(8)
 
-        hf_repo_label = QLabel("HuggingFace Repository:")
+        hf_repo_label = QLabel(t("download.hf_repo", "HuggingFace Repository:"))
         hf_repo_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
         hf_layout.addWidget(hf_repo_label)
 
@@ -163,7 +163,7 @@ class DownloadTab(QWidget):
         self.hf_repo_input.setPlaceholderText("e.g.: TheBloke/Llama-2-7B-GGUF")
         hf_layout.addWidget(self.hf_repo_input)
 
-        hf_file_label = QLabel("GGUF file name:")
+        hf_file_label = QLabel(t("download.hf_file", "GGUF file name:"))
         hf_file_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
         hf_layout.addWidget(hf_file_label)
 
@@ -172,7 +172,7 @@ class DownloadTab(QWidget):
         hf_layout.addWidget(self.hf_file_input)
 
         # Popular models
-        popular_label = QLabel("Or choose a popular model:")
+        popular_label = QLabel(t("download.popular", "Or choose a popular model:"))
         popular_label.setStyleSheet("color: #6c7086; font-size: 12px; font-weight: bold;")
         hf_layout.addWidget(popular_label)
 
@@ -182,7 +182,7 @@ class DownloadTab(QWidget):
 
         download_layout.addWidget(self.hf_frame)
 
-        self.download_btn = QPushButton("⬇️ Download Model")
+        self.download_btn = QPushButton(f"⬇️ {t('download.btn', 'Download Model')}")
         self.download_btn.setObjectName("SuccessBtn")
         self.download_btn.setMinimumHeight(42)
         self.download_btn.setStyleSheet("""
@@ -264,7 +264,7 @@ class DownloadTab(QWidget):
 
     def _populate_lmstudio_models(self):
         self.hf_popular_combo.clear()
-        self.hf_popular_combo.addItem("-- Select --", None)
+        self.hf_popular_combo.addItem(f"-- {t('download.select', 'Select')} --", None)
         for model in LMStudioBackend.get_popular_models():
             display = f"{model['repo'].split('/')[-1]} — {model['file']}"
             self.hf_popular_combo.addItem(display, model)
@@ -277,18 +277,18 @@ class DownloadTab(QWidget):
 
     def _check_ollama_status(self):
         if self.ollama.is_running():
-            self.backend_status.setText("🟢 Ollama is running")
+            self.backend_status.setText(f"🟢 {t('download.ollama_running', 'Ollama is running')}")
             self.backend_status.setStyleSheet("color: #a6e3a1; font-size: 12px;")
         else:
-            self.backend_status.setText("🔴 Ollama is not running — start with 'ollama serve'")
+            self.backend_status.setText(f"🔴 {t('download.ollama_not_running', 'Ollama is not running — start with')}")
             self.backend_status.setStyleSheet("color: #f38ba8; font-size: 12px;")
 
     def _check_lmstudio_status(self):
         if self.lmstudio.is_running():
-            self.backend_status.setText("🟢 LMStudio server is running")
+            self.backend_status.setText(f"🟢 {t('download.lmstudio_running', 'LMStudio server is running')}")
             self.backend_status.setStyleSheet("color: #a6e3a1; font-size: 12px;")
         else:
-            self.backend_status.setText("🟡 LMStudio: Open the app and start the local server")
+            self.backend_status.setText(f"🟡 {t('download.lmstudio_not_running', 'LMStudio: Open the app and start the local server')}")
             self.backend_status.setStyleSheet("color: #fab387; font-size: 12px;")
 
     def refresh_models(self):
@@ -316,13 +316,13 @@ class DownloadTab(QWidget):
 
         count = self.installed_list.count()
         if count == 0:
-            empty_item = QListWidgetItem("   No models installed")
+            empty_item = QListWidgetItem(f"   {t('download.no_models', 'No models installed')}")
             empty_item.setForeground(QColor("#6c7086"))
             empty_item.setFlags(Qt.NoItemFlags)
             self.installed_list.addItem(empty_item)
-            self._model_count_label.setText("0 models")
+            self._model_count_label.setText(f"0 {t('download.models', 'models')}")
         else:
-            self._model_count_label.setText(f"{count} model{'s' if count != 1 else ''}")
+            self._model_count_label.setText(f"{count} {t('download.models', 'models')}")
 
     def _format_size(self, size_bytes: int) -> str:
         if size_bytes == 0:
@@ -335,7 +335,7 @@ class DownloadTab(QWidget):
 
     def _start_download(self):
         if self.download_worker and self.download_worker.isRunning():
-            QMessageBox.warning(self, "Warning", "A download is already in progress!")
+            QMessageBox.warning(self, t("dialogs.warning", "Warning"), t("download.already_in_progress", "A download is already in progress!"))
             return
 
         is_ollama = self.config.download_backend == "ollama"
@@ -343,13 +343,13 @@ class DownloadTab(QWidget):
         if is_ollama:
             model_name = self.model_combo.currentText().strip()
             if not model_name:
-                QMessageBox.warning(self, "Warning", "Select or type a model!")
+                QMessageBox.warning(self, t("dialogs.warning", "Warning"), t("download.select_type_model", "Select or type a model!"))
                 return
 
             if not self.ollama.is_running():
                 QMessageBox.warning(
-                    self, "Error",
-                    "Ollama is not running!\nStart with: ollama serve"
+                    self, t("dialogs.error", "Error"),
+                    t("download.ollama_error", "Ollama is not running!\nStart with: ollama serve")
                 )
                 return
 
@@ -362,8 +362,8 @@ class DownloadTab(QWidget):
 
             if not repo or not filename:
                 QMessageBox.warning(
-                    self, "Warning",
-                    "Fill in the repository and file name!"
+                    self, t("dialogs.warning", "Warning"),
+                    t("download.fill_repo", "Fill in the repository and file name!")
                 )
                 return
 
@@ -376,10 +376,10 @@ class DownloadTab(QWidget):
         self.download_worker.finished.connect(self._on_download_finished)
 
         self.download_btn.setEnabled(False)
-        self.download_btn.setText("⏳ Downloading…")
+        self.download_btn.setText(f"⏳ {t('download.downloading', 'Downloading…')}")
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
-        self.status_label.setText("Starting download...")
+        self.status_label.setText(t("download.starting", "Starting download..."))
 
         self.download_worker.start()
 
@@ -394,7 +394,7 @@ class DownloadTab(QWidget):
 
     def _on_download_finished(self, success: bool, message: str):
         self.download_btn.setEnabled(True)
-        self.download_btn.setText("⬇️ Download Model")
+        self.download_btn.setText(f"⬇️ {t('download.btn', 'Download Model')}")
         self.progress_bar.setVisible(False)
 
         if success:
@@ -408,7 +408,7 @@ class DownloadTab(QWidget):
     def _delete_selected_model(self):
         current = self.installed_list.currentItem()
         if not current:
-            QMessageBox.warning(self, "Warning", "Select a model to remove!")
+            QMessageBox.warning(self, t("dialogs.warning", "Warning"), t("download.select_remove", "Select a model to remove!"))
             return
 
         model_id = current.data(Qt.UserRole)
@@ -416,8 +416,8 @@ class DownloadTab(QWidget):
             return
 
         reply = QMessageBox.question(
-            self, "Confirm Removal",
-            f"Remove the model:\n{model_id}?",
+            self, t("download.confirm_removal", "Confirm Removal"),
+            f"{t('download.remove_confirm', 'Remove the model:')}\n{model_id}?",
             QMessageBox.Yes | QMessageBox.No
         )
 
@@ -428,9 +428,9 @@ class DownloadTab(QWidget):
                 success = self.lmstudio.delete_model(model_id)
 
             if success:
-                self.status_label.setText("✅ Model removed!")
+                self.status_label.setText(f"✅ {t('download.removed', 'Model removed!')}")
                 self.status_label.setStyleSheet("color: #a6e3a1; font-size: 12px;")
                 self.refresh_models()
             else:
-                self.status_label.setText("❌ Error removing model")
+                self.status_label.setText(f"❌ {t('download.error_removing', 'Error removing model')}")
                 self.status_label.setStyleSheet("color: #f38ba8; font-size: 12px;")

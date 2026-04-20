@@ -18,6 +18,7 @@ a = Analysis(
         'requests',
         'httpx',
         'src.utils.extensions',
+        'src.utils.i18n',
         'src.backends.ollama_backend',
         'src.backends.lmstudio_backend',
         'src.backends.airllm_backend',
