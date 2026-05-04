@@ -84,7 +84,9 @@
     "enable_file_ops": "Habilitar operações de arquivo por IA",
     "log_header": "📋 Log de Operações de Arquivo",
     "welcome": "Bem-vindo ao AirLLMEasy! Selecione um modelo e comece a conversar.",
-    "workspace_loaded": "📁 Espaço de trabalho carregado com {} pasta(s). A IA pode criar, editar e mover arquivos."
+    "workspace_loaded": "📁 Espaço de trabalho carregado com {} pasta(s). A IA pode criar, editar e mover arquivos.",
+    "local_gguf": "📁 Arquivo GGUF Local...",
+    "local_gguf_tip": "Selecione um arquivo .gguf local diretamente"
   },
   "extensions": {
     "loaded": "Extensões Carregadas",

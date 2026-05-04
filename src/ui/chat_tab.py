@@ -148,6 +148,13 @@ class ModelSelectorDialog(QDialog):
         )
         self.airllm_list_refresh_btn.clicked.connect(self._load_models)
         refresh_row.addWidget(self.airllm_list_refresh_btn)
+
+        self.local_file_btn = QPushButton(t("chat.local_gguf", "📁 Local GGUF File..."))
+        self.local_file_btn.setObjectName("GhostBtn")
+        self.local_file_btn.setToolTip(t("chat.local_gguf_tip", "Select a local .gguf file directly"))
+        self.local_file_btn.clicked.connect(self._select_local_file)
+        refresh_row.addWidget(self.local_file_btn)
+
         refresh_row.addStretch()
         layout.addLayout(refresh_row)
 
@@ -201,7 +208,17 @@ class ModelSelectorDialog(QDialog):
             item.setForeground(QColor("#6c7086"))
             self.model_list.addItem(item)
 
+    def _select_local_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, t("chat.local_gguf_tip", "Select GGUF File"), "", "GGUF Files (*.gguf);;All Files (*)")
+        if file_path:
+            self.selected_model = file_path
+            self.selected_type = "gguf"
+            self.accept()
+
     def get_selection(self):
+        if getattr(self, "selected_model", None):
+            return self.selected_model, getattr(self, "selected_type", "gguf")
+
         current = self.model_list.currentItem()
         if current:
             model_data = current.data(Qt.UserRole)

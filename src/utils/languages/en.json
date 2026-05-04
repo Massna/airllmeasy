@@ -84,7 +84,9 @@
     "enable_file_ops": "Enable AI file operations",
     "log_header": "📋 File Operations Log",
     "welcome": "Welcome to AirLLMEasy! Select a model and start chatting.",
-    "workspace_loaded": "📁 Workspace loaded with {} folder(s). AI can create, edit, and move files."
+    "workspace_loaded": "📁 Workspace loaded with {} folder(s). AI can create, edit, and move files.",
+    "local_gguf": "📁 Local GGUF File...",
+    "local_gguf_tip": "Select a local .gguf file directly"
   },
   "extensions": {
     "loaded": "Loaded Extensions",
